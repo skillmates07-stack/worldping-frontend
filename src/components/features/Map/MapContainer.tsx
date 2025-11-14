@@ -29,7 +29,8 @@ export default function MapContainer() {
       <GeolocateControl
         position="top-right"
         trackUserLocation
-        showUserHeading
+        positionOptions={{ enableHighAccuracy: true }}
+        showUserLocation={true}
       />
     </Map>
   )
