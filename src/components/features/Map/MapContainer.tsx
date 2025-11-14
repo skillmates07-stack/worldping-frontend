@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Map, { NavigationControl, GeolocateControl } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import MessageModal from '@/components/features/DropMessage/MessageModal'
-import MessageMarkers from './MessageMarkers'
+import MessageMarkers from '@/components/features/Map/MessageMarkers'
 import { useMessages } from '@/hooks/useMessages'
 
 export default function MapContainer() {
@@ -77,3 +77,4 @@ export default function MapContainer() {
     </>
   )
 }
+
