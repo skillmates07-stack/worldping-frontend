@@ -10,3 +10,25 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     }
   }
 })
+
+// Type definitions for our database
+export interface Message {
+  id: string
+  device_id: string
+  content: string
+  emoji: string | null
+  latitude: number
+  longitude: number
+  upvotes: number
+  downvotes: number
+  created_at: string
+  expires_at: string
+}
+
+export interface Vote {
+  id: string
+  message_id: string
+  device_id: string
+  vote_type: 'up' | 'down'
+  created_at: string
+}
