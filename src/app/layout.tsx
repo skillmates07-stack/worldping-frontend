@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { Providers } from './providers'
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' })
 
@@ -68,8 +69,11 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://api.mapbox.com" />
       </head>
       <body className="antialiased bg-black text-white">
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )
 }
+
