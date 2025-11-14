@@ -1,3 +1,10 @@
+export const EMOJIS = [
+  '😀', '😍', '🎉', '🔥', '❤️', '👍', '🌍', '✨', 
+  '💡', '🚀', '🎯', '💯', '👋', '🙌', '😎', '🤔', 
+  '😂', '🥳', '😊', '💪', '🌟', '⚡', '🎊', '🏆',
+  '💎', '🌈', '🎵', '📍', '🌴', '🌸', '🍕', '☕'
+]
+
 export const MOODS = [
   { emoji: '😊', name: 'Happy', color: '#10b981', value: 'happy' },
   { emoji: '😢', name: 'Sad', color: '#3b82f6', value: 'sad' },
@@ -10,9 +17,6 @@ export const MOODS = [
   { emoji: '🎉', name: 'Celebrating', color: '#f97316', value: 'celebrating' },
   { emoji: '😰', name: 'Anxious', color: '#737373', value: 'anxious' },
 ]
-
-// ... keep your existing constants ...
-
 
 export const ACHIEVEMENT_BADGES = {
   FIRST_MESSAGE: { 
@@ -72,5 +76,6 @@ export const APP_CONFIG = {
   LEADERBOARD_SIZE: 50,
   NEARBY_RADIUS_KM: 5,
   MAX_MESSAGES_PER_DAY: 50,
-  VOTE_COOLDOWN_MS: 1000
+  VOTE_COOLDOWN_MS: 1000,
+  TIME_CAPSULE_HOURS: 24
 }
