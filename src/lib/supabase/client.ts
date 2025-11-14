@@ -14,7 +14,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// Database Types
+// Complete Database Types
 export interface Message {
   id: string
   device_id: string
@@ -28,6 +28,7 @@ export interface Message {
   expires_at: string
   country?: string
   is_live_moment?: boolean
+  is_trending?: boolean
 }
 
 export interface Vote {
@@ -46,11 +47,4 @@ export interface UserStreak {
   last_post_date: string
   total_messages: number
   total_upvotes: number
-}
-
-export interface Achievement {
-  id: string
-  device_id: string
-  badge_key: string
-  earned_at: string
 }
