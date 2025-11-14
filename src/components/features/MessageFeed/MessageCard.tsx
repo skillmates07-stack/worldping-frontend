@@ -1,8 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { ThumbsUp, ThumbsDown, MapPin, Clock } from 'lucide-react'
 import { supabase, type Message } from '@/lib/supabase/client'
 import { useDeviceId } from '@/hooks/useDeviceId'
+import { formatTimeAgo, cn } from '@/lib/utils'
+import Badge from '@/components/ui/Badge'
 
 interface MessageCardProps {
   message: Message
@@ -15,16 +19,17 @@ export default function MessageCard({ message }: MessageCardProps) {
     upvotes: message.upvotes,
     downvotes: message.downvotes
   })
+  const [userVote, setUserVote] = useState<'up' | 'down' | null>(null)
 
   const score = localVotes.upvotes - localVotes.downvotes
+  const isOwnMessage = message.device_id === deviceId
 
   const handleVote = async (voteType: 'up' | 'down') => {
-    if (!deviceId || voting) return
+    if (!deviceId || voting || isOwnMessage) return
     
     setVoting(true)
     
     try {
-      // Insert or update vote
       const { error } = await supabase
         .from('votes')
         .upsert({
@@ -38,10 +43,21 @@ export default function MessageCard({ message }: MessageCardProps) {
       if (error) throw error
 
       // Update local state optimistically
-      setLocalVotes(prev => ({
-        upvotes: voteType === 'up' ? prev.upvotes + 1 : prev.upvotes,
-        downvotes: voteType === 'down' ? prev.downvotes + 1 : prev.downvotes
-      }))
+      if (userVote === voteType) {
+        // Remove vote
+        setLocalVotes(prev => ({
+          upvotes: voteType === 'up' ? prev.upvotes - 1 : prev.upvotes,
+          downvotes: voteType === 'down' ? prev.downvotes - 1 : prev.downvotes
+        }))
+        setUserVote(null)
+      } else {
+        // Add or change vote
+        setLocalVotes(prev => ({
+          upvotes: voteType === 'up' ? prev.upvotes + 1 : (userVote === 'up' ? prev.upvotes - 1 : prev.upvotes),
+          downvotes: voteType === 'down' ? prev.downvotes + 1 : (userVote === 'down' ? prev.downvotes - 1 : prev.downvotes)
+        }))
+        setUserVote(voteType)
+      }
     } catch (err) {
       console.error('Vote error:', err)
     } finally {
@@ -49,67 +65,101 @@ export default function MessageCard({ message }: MessageCardProps) {
     }
   }
 
-  const timeAgo = () => {
-    const seconds = Math.floor((Date.now() - new Date(message.created_at).getTime()) / 1000)
-    if (seconds < 60) return 'just now'
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-    return `${Math.floor(seconds / 86400)}d ago`
-  }
-
   return (
-    <div className="bg-brand-gray border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200 group">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className={cn(
+        "glass-dark rounded-xl p-4 hover:border-gray-700 transition-all duration-200 group",
+        isOwnMessage && "border-green-500/30"
+      )}
+    >
       {/* Header */}
       <div className="flex items-start gap-3 mb-3">
+        {/* Emoji */}
         {message.emoji && (
-          <div className="text-3xl flex-shrink-0">{message.emoji}</div>
+          <div className="text-3xl flex-shrink-0 mt-0.5">
+            {message.emoji}
+          </div>
         )}
         
+        {/* Content */}
         <div className="flex-1 min-w-0">
           <p className="text-white text-sm leading-relaxed break-words">
             {message.content}
           </p>
+          
+          {isOwnMessage && (
+            <Badge variant="success" className="mt-2 text-xs">
+              Your Message
+            </Badge>
+          )}
         </div>
 
         {/* Score Badge */}
-        <div className={`flex-shrink-0 px-2 py-1 rounded-lg text-xs font-bold ${
-          score > 0 ? 'bg-green-500/20 text-green-400' :
-          score < 0 ? 'bg-red-500/20 text-red-400' :
-          'bg-gray-700 text-gray-400'
-        }`}>
+        <div className={cn(
+          "flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold",
+          score > 5 ? "bg-green-500/20 text-green-400" :
+          score > 0 ? "bg-blue-500/20 text-blue-400" :
+          score < 0 ? "bg-red-500/20 text-red-400" :
+          "bg-gray-700 text-gray-400"
+        )}>
           {score > 0 ? '+' : ''}{score}
         </div>
       </div>
 
       {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t border-gray-800">
-        {/* Location & Time */}
-        <div className="text-xs text-gray-500">
-          <span className="inline-flex items-center gap-1">
-            📍 {message.latitude.toFixed(2)}°, {message.longitude.toFixed(2)}°
+        {/* Meta Info */}
+        <div className="flex items-center gap-3 text-xs text-gray-500">
+          <span className="flex items-center gap-1">
+            <MapPin className="w-3 h-3" />
+            {message.latitude.toFixed(2)}°, {message.longitude.toFixed(2)}°
           </span>
-          <span className="mx-2">•</span>
-          <span>{timeAgo()}</span>
+          <span className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            {formatTimeAgo(message.created_at)}
+          </span>
         </div>
 
         {/* Vote Buttons */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => handleVote('up')}
-            disabled={voting}
-            className="px-3 py-1.5 bg-gray-800 hover:bg-green-500/20 hover:text-green-400 text-gray-400 rounded-lg transition-all duration-200 disabled:opacity-50 text-sm font-medium"
-          >
-            👍 {localVotes.upvotes}
-          </button>
-          <button
-            onClick={() => handleVote('down')}
-            disabled={voting}
-            className="px-3 py-1.5 bg-gray-800 hover:bg-red-500/20 hover:text-red-400 text-gray-400 rounded-lg transition-all duration-200 disabled:opacity-50 text-sm font-medium"
-          >
-            👎 {localVotes.downvotes}
-          </button>
-        </div>
+        {!isOwnMessage && (
+          <div className="flex items-center gap-1">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => handleVote('up')}
+              disabled={voting}
+              className={cn(
+                "px-3 py-1.5 rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-1",
+                userVote === 'up'
+                  ? "bg-green-500 text-white"
+                  : "bg-gray-800 hover:bg-green-500/20 hover:text-green-400 text-gray-400"
+              )}
+            >
+              <ThumbsUp className="w-4 h-4" />
+              <span>{localVotes.upvotes}</span>
+            </motion.button>
+            
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => handleVote('down')}
+              disabled={voting}
+              className={cn(
+                "px-3 py-1.5 rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-1",
+                userVote === 'down'
+                  ? "bg-red-500 text-white"
+                  : "bg-gray-800 hover:bg-red-500/20 hover:text-red-400 text-gray-400"
+              )}
+            >
+              <ThumbsDown className="w-4 h-4" />
+              <span>{localVotes.downvotes}</span>
+            </motion.button>
+          </div>
+        )}
       </div>
-    </div>
+    </motion.div>
   )
 }
