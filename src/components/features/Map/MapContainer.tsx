@@ -1,16 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Map, { NavigationControl, GeolocateControl, Marker } from 'react-map-gl/maplibre'
 import { motion } from 'framer-motion'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import MessageModal from '@/components/features/DropMessage/MessageModal'
+import TeleportButton from '@/components/features/Teleport/TeleportButton'
 import LockedMarker from './LockedMarker'
 import { useMessages } from '@/hooks/useMessages'
 import { useDeviceId } from '@/hooks/useDeviceId'
 import toast from 'react-hot-toast'
 
 export default function MapContainer() {
+  const mapRef = useRef<any>(null)
   const [viewState, setViewState] = useState({
     longitude: 0,
     latitude: 20,
@@ -47,6 +49,15 @@ export default function MapContainer() {
     refetch()
   }
 
+  const handleTeleport = (lat: number, lng: number, cityName: string) => {
+    // Smooth fly animation to random city
+    setViewState({
+      longitude: lng,
+      latitude: lat,
+      zoom: 12
+    })
+  }
+
   const handleLockedMarkerClick = (messageId: string) => {
     const message = messages.find(m => m.id === messageId)
     if (message) {
@@ -81,6 +92,7 @@ export default function MapContainer() {
     <>
       <Map
         {...viewState}
+        ref={mapRef}
         onMove={evt => setViewState(evt.viewState)}
         mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
         style={{ width: '100%', height: '100%' }}
@@ -145,7 +157,7 @@ export default function MapContainer() {
                     </div>
                   )}
 
-                  {/* Pulse Animation for new messages */}
+                  {/* Pulse for new messages */}
                   {new Date(message.created_at).getTime() > Date.now() - 60000 && (
                     <div className="absolute inset-0 w-10 h-10 bg-blue-400 rounded-full animate-ping opacity-30"></div>
                   )}
@@ -164,6 +176,11 @@ export default function MapContainer() {
           )
         })}
       </Map>
+
+      {/* Random Teleport Button - Top Left */}
+      <div className="absolute top-4 left-4 z-30">
+        <TeleportButton onTeleport={handleTeleport} />
+      </div>
 
       {/* Message Creation Modal */}
       <MessageModal
