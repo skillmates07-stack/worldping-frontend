@@ -1,10 +1,18 @@
-export const EMOJIS = [
-  '😀', '😍', '🎉', '🔥', '❤️', '👍', '🌍', '✨', 
-  '💡', '🚀', '🎯', '💯', '👋', '🙌', '😎', '🤔', 
-  '😂', '🥳', '😊', '💪', '🌟', '⚡', '🎊', '🏆',
-  '💎', '🌈', '🎵', '📍', '🌴', '🌸', '🍕', '☕',
-  '🎮', '📱', '💻', '🎨', '🎭', '🎪', '🎬', '📸'
+export const MOODS = [
+  { emoji: '😊', name: 'Happy', color: '#10b981', value: 'happy' },
+  { emoji: '😢', name: 'Sad', color: '#3b82f6', value: 'sad' },
+  { emoji: '😡', name: 'Angry', color: '#ef4444', value: 'angry' },
+  { emoji: '🔥', name: 'Excited', color: '#f59e0b', value: 'excited' },
+  { emoji: '😴', name: 'Tired', color: '#8b5cf6', value: 'tired' },
+  { emoji: '😎', name: 'Cool', color: '#06b6d4', value: 'cool' },
+  { emoji: '🤔', name: 'Thoughtful', color: '#6366f1', value: 'thoughtful' },
+  { emoji: '❤️', name: 'Loving', color: '#ec4899', value: 'loving' },
+  { emoji: '🎉', name: 'Celebrating', color: '#f97316', value: 'celebrating' },
+  { emoji: '😰', name: 'Anxious', color: '#737373', value: 'anxious' },
 ]
+
+// ... keep your existing constants ...
+
 
 export const ACHIEVEMENT_BADGES = {
   FIRST_MESSAGE: { 
