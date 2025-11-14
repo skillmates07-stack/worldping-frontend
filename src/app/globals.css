@@ -71,3 +71,40 @@ a {
 ::-webkit-scrollbar-thumb:hover {
   background: #2563eb;
 }
+
+/* ... existing styles ... */
+
+/* Message Popup Styling */
+.message-popup .maplibregl-popup-content {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.message-popup .maplibregl-popup-close-button {
+  color: #666;
+  font-size: 20px;
+  padding: 8px;
+}
+
+.message-popup .maplibregl-popup-close-button:hover {
+  color: #000;
+  background: transparent;
+}
+
+.message-popup .maplibregl-popup-tip {
+  border-top-color: white;
+}
+
+/* Marker Pulse Animation */
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.animate-ping {
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
