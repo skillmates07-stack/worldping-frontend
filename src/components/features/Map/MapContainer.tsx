@@ -4,6 +4,8 @@ import { useState } from 'react'
 import Map, { NavigationControl, GeolocateControl } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import MessageModal from '@/components/features/DropMessage/MessageModal'
+import MessageMarkers from './MessageMarkers'
+import { useMessages } from '@/hooks/useMessages'
 
 export default function MapContainer() {
   const [viewState, setViewState] = useState({
@@ -22,6 +24,8 @@ export default function MapContainer() {
     lng: 0
   })
 
+  const { messages, refetch } = useMessages()
+
   const handleMapClick = (e: any) => {
     const { lng, lat } = e.lngLat
     setModalState({
@@ -37,7 +41,7 @@ export default function MapContainer() {
 
   const handleMessageSuccess = () => {
     console.log('Message created successfully!')
-    // TODO: Refresh messages on map
+    refetch()
   }
 
   return (
@@ -49,6 +53,7 @@ export default function MapContainer() {
         style={{ width: '100%', height: '100%' }}
         onClick={handleMapClick}
       >
+        {/* Navigation Controls */}
         <NavigationControl position="top-right" />
         <GeolocateControl
           position="top-right"
@@ -56,8 +61,12 @@ export default function MapContainer() {
           positionOptions={{ enableHighAccuracy: true }}
           showUserLocation={true}
         />
+
+        {/* Message Markers */}
+        <MessageMarkers messages={messages} />
       </Map>
 
+      {/* Message Creation Modal */}
       <MessageModal
         isOpen={modalState.isOpen}
         onClose={handleCloseModal}
