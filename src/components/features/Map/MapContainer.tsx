@@ -2,11 +2,14 @@
 
 import { useState, useRef } from 'react'
 import Map, { NavigationControl, GeolocateControl, Marker } from 'react-map-gl/maplibre'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import MessageModal from '@/components/features/DropMessage/MessageModal'
 import TeleportButton from '@/components/features/Teleport/TeleportButton'
 import MoodHeatmap from '@/components/features/Mood/MoodHeatmap'
+import CityChatPanel from '@/components/features/CityChat/CityChatPanel'
+import CityChatButton from '@/components/features/CityChat/CityChatButton'
+import DailyChallenges from '@/components/features/Challenges/DailyChallenges'
 import LockedMarker from './LockedMarker'
 import { useMessages } from '@/hooks/useMessages'
 import { useDeviceId } from '@/hooks/useDeviceId'
@@ -29,6 +32,8 @@ export default function MapContainer() {
     lat: 0,
     lng: 0
   })
+
+  const [currentCity, setCurrentCity] = useState<string | null>(null)
 
   const { messages, refetch, isMessageUnlocked, userMessageCount } = useMessages()
   const deviceId = useDeviceId()
@@ -56,6 +61,23 @@ export default function MapContainer() {
       latitude: lat,
       zoom: 12
     })
+    
+    // Auto-open city chat when teleporting
+    setTimeout(() => {
+      setCurrentCity(cityName)
+    }, 1000)
+  }
+
+  const handleOpenCityChat = () => {
+    // Get current city based on viewport center
+    const cities = [
+      'Tokyo', 'New York', 'Paris', 'London', 'Dubai', 'Mumbai',
+      'Singapore', 'Sydney', 'Seoul', 'Bangkok'
+    ]
+    
+    // For demo, pick a random city (in production, use reverse geocoding)
+    const randomCity = cities[Math.floor(Math.random() * cities.length)]
+    setCurrentCity(randomCity)
   }
 
   const handleLockedMarkerClick = (messageId: string) => {
@@ -169,14 +191,19 @@ export default function MapContainer() {
         })}
       </Map>
 
-      {/* Random Teleport Button - Top Left */}
-      <div className="absolute top-4 left-4 z-30">
+      {/* Top Left - Random Teleport */}
+      <div className="absolute top-4 left-4 z-30 flex flex-col gap-2">
         <TeleportButton onTeleport={handleTeleport} />
+        <CityChatButton onClick={handleOpenCityChat} />
       </div>
 
-      {/* Mood Heatmap Widget - Bottom Right */}
+      {/* Bottom Right - Mood Heatmap */}
       <MoodHeatmap />
 
+      {/* Top Right - Daily Challenges */}
+      <DailyChallenges />
+
+      {/* Message Modal */}
       <MessageModal
         isOpen={modalState.isOpen}
         onClose={handleCloseModal}
@@ -185,6 +212,17 @@ export default function MapContainer() {
         onSuccess={handleMessageSuccess}
       />
 
+      {/* City Chat Panel */}
+      <AnimatePresence>
+        {currentCity && (
+          <CityChatPanel 
+            cityName={currentCity}
+            onClose={() => setCurrentCity(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* First-time user hint */}
       {userMessageCount === 0 && messages.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
