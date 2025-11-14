@@ -20,6 +20,7 @@ export interface Message {
   device_id: string
   content: string
   emoji: string | null
+  mood: string | null  // Add this
   latitude: number
   longitude: number
   upvotes: number
@@ -27,9 +28,10 @@ export interface Message {
   created_at: string
   expires_at: string
   country?: string
-  is_live_moment?: boolean
-  is_trending?: boolean
+  is_time_capsule?: boolean  // Add this
+  unlock_at?: string  // Add this
 }
+
 
 export interface Vote {
   id: string
@@ -48,3 +50,4 @@ export interface UserStreak {
   total_messages: number
   total_upvotes: number
 }
+
