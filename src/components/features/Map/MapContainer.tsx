@@ -1,16 +1,21 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import Map, { Marker, NavigationControl, GeolocateControl } from 'react-map-gl'
+import { useState } from 'react'
+import Map, { NavigationControl, GeolocateControl } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-export function MapContainer() {
-  const mapRef = useRef(null)
+export default function MapContainer() {
   const [viewState, setViewState] = useState({
     longitude: 0,
     latitude: 20,
     zoom: 2
   })
+
+  const handleMapClick = (e: any) => {
+    const { lng, lat } = e.lngLat
+    console.log('Clicked:', { lng, lat })
+    alert(`You clicked: ${lat.toFixed(4)}, ${lng.toFixed(4)}\n\nMessage modal will open here!`)
+  }
 
   return (
     <Map
@@ -18,11 +23,7 @@ export function MapContainer() {
       onMove={evt => setViewState(evt.viewState)}
       mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
       style={{ width: '100%', height: '100%' }}
-      ref={mapRef}
-      onClick={(e) => {
-        console.log('Clicked:', e.lngLat)
-        // Open message modal here
-      }}
+      onClick={handleMapClick}
     >
       <NavigationControl position="top-right" />
       <GeolocateControl
@@ -30,8 +31,6 @@ export function MapContainer() {
         trackUserLocation
         showUserHeading
       />
-      
-      {/* Render message markers here */}
     </Map>
   )
 }
