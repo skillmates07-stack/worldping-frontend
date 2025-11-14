@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useDeviceId } from '@/hooks/useDeviceId'
+import { useStreak } from '@/hooks/useStreak'
 
 interface MessageModalProps {
   isOpen: boolean
@@ -17,6 +18,7 @@ const EMOJI_LIST = ['😀', '😍', '🎉', '🔥', '❤️', '👍', '🌍', '�
 export default function MessageModal({ isOpen, onClose, latitude, longitude, onSuccess }: MessageModalProps) {
   const [content, setContent] = useState('')
   const [selectedEmoji, setSelectedEmoji] = useState('')
+  const { updateStreakAfterPost } = useStreak()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -175,3 +177,4 @@ export default function MessageModal({ isOpen, onClose, latitude, longitude, onS
     </div>
   )
 }
+
