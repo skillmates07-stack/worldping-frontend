@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Map, { NavigationControl, GeolocateControl } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import MessageModal from '@/components/features/DropMessage/MessageModal'
 
 export default function MapContainer() {
   const [viewState, setViewState] = useState({
@@ -11,27 +12,59 @@ export default function MapContainer() {
     zoom: 2
   })
 
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean
+    lat: number
+    lng: number
+  }>({
+    isOpen: false,
+    lat: 0,
+    lng: 0
+  })
+
   const handleMapClick = (e: any) => {
     const { lng, lat } = e.lngLat
-    console.log('Clicked:', { lng, lat })
-    alert(`You clicked: ${lat.toFixed(4)}, ${lng.toFixed(4)}\n\nMessage modal will open here!`)
+    setModalState({
+      isOpen: true,
+      lat,
+      lng
+    })
+  }
+
+  const handleCloseModal = () => {
+    setModalState(prev => ({ ...prev, isOpen: false }))
+  }
+
+  const handleMessageSuccess = () => {
+    console.log('Message created successfully!')
+    // TODO: Refresh messages on map
   }
 
   return (
-    <Map
-      {...viewState}
-      onMove={evt => setViewState(evt.viewState)}
-      mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-      style={{ width: '100%', height: '100%' }}
-      onClick={handleMapClick}
-    >
-      <NavigationControl position="top-right" />
-      <GeolocateControl
-        position="top-right"
-        trackUserLocation
-        positionOptions={{ enableHighAccuracy: true }}
-        showUserLocation={true}
+    <>
+      <Map
+        {...viewState}
+        onMove={evt => setViewState(evt.viewState)}
+        mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+        style={{ width: '100%', height: '100%' }}
+        onClick={handleMapClick}
+      >
+        <NavigationControl position="top-right" />
+        <GeolocateControl
+          position="top-right"
+          trackUserLocation
+          positionOptions={{ enableHighAccuracy: true }}
+          showUserLocation={true}
+        />
+      </Map>
+
+      <MessageModal
+        isOpen={modalState.isOpen}
+        onClose={handleCloseModal}
+        latitude={modalState.lat}
+        longitude={modalState.lng}
+        onSuccess={handleMessageSuccess}
       />
-    </Map>
+    </>
   )
 }
