@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { Globe, Sparkles, TrendingUp } from 'lucide-react'
 import { MessageFeed } from '@/components/features/MessageFeed'
+import GlobalChatPanel from '@/components/features/GlobalChat/GlobalChatPanel'
 import StreakBadge from '@/components/features/Streak/StreakBadge'
 
 const MapContainer = dynamic(
@@ -109,7 +110,11 @@ export default function HomePage() {
         >
           <MessageFeed />
         </motion.aside>
+        {/* Global Chat */}
+        <GlobalChatPanel />
+
       </main>
     </div>
   )
 }
+
