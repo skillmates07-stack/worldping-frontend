@@ -9,7 +9,7 @@ export function useMessageActions() {
 
   async function deleteMessage(messageId: string, messageDeviceId: string) {
     if (messageDeviceId !== deviceId) {
-      toast.error("You can only delete your own messages")
+      toast.error("❌ You can only delete your own messages")
       return false
     }
 
@@ -22,7 +22,7 @@ export function useMessageActions() {
 
       if (error) throw error
       
-      toast.success('🗑️ Message deleted')
+      toast.success('🗑️ Message deleted successfully')
       return true
     } catch (error: any) {
       toast.error('Failed to delete message')
