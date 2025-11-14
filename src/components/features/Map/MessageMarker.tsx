@@ -27,22 +27,17 @@ export default function MessageMarkers({ messages, onMessageClick }: MessageMark
           }}
         >
           <div className="group cursor-pointer">
-            {/* Custom Pin Design */}
             <div className="relative">
-              {/* Pin Body */}
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full border-3 border-white shadow-lg group-hover:scale-110 transition-transform duration-200 flex items-center justify-center">
                 <span className="text-xl">
                   {message.emoji || '💬'}
                 </span>
               </div>
               
-              {/* Pin Tail */}
               <div className="absolute bottom-[-8px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-white"></div>
               
-              {/* Pulse Animation */}
               <div className="absolute inset-0 w-10 h-10 bg-blue-400 rounded-full animate-ping opacity-20"></div>
               
-              {/* Vote Score Badge */}
               {(message.upvotes - message.downvotes) > 0 && (
                 <div className="absolute -top-2 -right-2 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
                   {message.upvotes - message.downvotes}
@@ -53,7 +48,6 @@ export default function MessageMarkers({ messages, onMessageClick }: MessageMark
         </Marker>
       ))}
 
-      {/* Popup on Click */}
       {selectedMessage && (
         <Popup
           longitude={selectedMessage.longitude}
