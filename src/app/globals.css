@@ -2,36 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-black text-white antialiased;
+  }
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  color: white;
-  background: black;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-/* Modal Animations */
+/* Smooth Animations */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes slideUp {
@@ -45,59 +29,112 @@ a {
   }
 }
 
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
 .animate-fadeIn {
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn 0.3s ease-out;
 }
 
 .animate-slideUp {
-  animation: slideUp 0.3s ease-out;
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Scrollbar Styling */
+.animate-slideDown {
+  animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-bounceIn {
+  animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 20%,
+    rgba(255, 255, 255, 0.5) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Map Popup Styling */
+.maplibregl-popup-content {
+  @apply bg-white rounded-xl p-0 shadow-2xl;
+}
+
+.maplibregl-popup-close-button {
+  @apply text-gray-600 hover:text-black text-xl p-2;
+}
+
+.maplibregl-popup-tip {
+  @apply border-t-white;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  @apply w-2 h-2;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1a1a1a;
+  @apply bg-gray-900;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3b82f6;
-  border-radius: 4px;
+  @apply bg-blue-600 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2563eb;
+  @apply bg-blue-500;
 }
 
-/* ... existing styles ... */
-
-/* Message Popup Styling */
-.message-popup .maplibregl-popup-content {
-  background: white;
-  border-radius: 12px;
-  padding: 0;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+/* Glassmorphism */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.message-popup .maplibregl-popup-close-button {
-  color: #666;
-  font-size: 20px;
-  padding: 8px;
+.glass-dark {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.message-popup .maplibregl-popup-close-button:hover {
-  color: #000;
-  background: transparent;
-}
-
-.message-popup .maplibregl-popup-tip {
-  border-top-color: white;
-}
-
-/* Marker Pulse Animation */
+/* Pulse Effect */
 @keyframes ping {
   75%, 100% {
     transform: scale(2);
@@ -107,4 +144,9 @@ a {
 
 .animate-ping {
   animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Gradient Text */
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500;
 }
