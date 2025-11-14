@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import Map, { NavigationControl, GeolocateControl } from 'react-map-gl/maplibre'
+import Map, { NavigationControl, GeolocateControl, Marker } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import MessageModal from '@/components/features/DropMessage/MessageModal'
-import MessageMarkers from '@/components/features/Map/MessageMarkers'
 import { useMessages } from '@/hooks/useMessages'
 
 export default function MapContainer() {
@@ -62,8 +61,19 @@ export default function MapContainer() {
           showUserLocation={true}
         />
 
-        {/* Message Markers */}
-        <MessageMarkers messages={messages} />
+        {/* Message Markers - Inline for now */}
+        {messages.map((message) => (
+          <Marker
+            key={message.id}
+            longitude={message.longitude}
+            latitude={message.latitude}
+            anchor="bottom"
+          >
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-xl cursor-pointer hover:scale-110 transition-transform">
+              {message.emoji || '💬'}
+            </div>
+          </Marker>
+        ))}
       </Map>
 
       {/* Message Creation Modal */}
@@ -77,4 +87,3 @@ export default function MapContainer() {
     </>
   )
 }
-
