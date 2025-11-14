@@ -22,18 +22,22 @@ export function useMessages() {
       loadUnlockedMessages()
     }
 
-    // Real-time subscription
     const channel = supabase
-      .channel('messages-channel')
+      .channel('messages-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'messages' },
         (payload) => {
           if (payload.eventType === 'INSERT') {
             setMessages(prev => [payload.new as Message, ...prev])
-            toast.success('🌍 New message dropped nearby!')
+            toast('🌍 New message nearby!', {
+              icon: '✨',
+              duration: 3000
+            })
           } else if (payload.eventType === 'UPDATE') {
-            setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new as Message : m))
+            setMessages(prev => prev.map(m => 
+              m.id === payload.new.id ? payload.new as Message : m
+            ))
           } else if (payload.eventType === 'DELETE') {
             setMessages(prev => prev.filter(m => m.id !== payload.old.id))
           }
@@ -59,6 +63,7 @@ export function useMessages() {
       if (fetchError) throw fetchError
       setMessages(data || [])
     } catch (err: any) {
+      console.error('Fetch error:', err)
       setError(err.message)
     } finally {
       setLoading(false)
@@ -82,8 +87,13 @@ export function useMessages() {
   }
 
   function unlockRandomMessages(count: number = APP_CONFIG.MESSAGES_PER_UNLOCK): number {
-    const locked = messages.filter(m => !unlockedMessages.includes(m.id) && m.device_id !== deviceId)
-    const toUnlock = locked.slice(0, count).map(m => m.id)
+    const locked = messages.filter(m => 
+      !unlockedMessages.includes(m.id) && 
+      m.device_id !== deviceId
+    )
+    
+    const shuffled = locked.sort(() => Math.random() - 0.5)
+    const toUnlock = shuffled.slice(0, count).map(m => m.id)
     
     const allUnlocked = [...unlockedMessages, ...toUnlock]
     setUnlockedMessages(allUnlocked)
@@ -93,7 +103,17 @@ export function useMessages() {
   }
 
   function isMessageUnlocked(messageId: string): boolean {
-    return unlockedMessages.includes(messageId) || userMessageCount > 0
+    const message = messages.find(m => m.id === messageId)
+    if (!message) return false
+    
+    // User's own messages are always unlocked
+    if (message.device_id === deviceId) return true
+    
+    // Check if user has posted at least once
+    if (userMessageCount > 0) return true
+    
+    // Check if specifically unlocked
+    return unlockedMessages.includes(messageId)
   }
 
   return {
