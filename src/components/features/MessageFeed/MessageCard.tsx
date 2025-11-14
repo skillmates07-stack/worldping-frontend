@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { ThumbsUp, ThumbsDown, MapPin, Clock } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, MapPin, Clock, Trash2, MoreVertical } from 'lucide-react'
 import { supabase, type Message } from '@/lib/supabase/client'
 import { useDeviceId } from '@/hooks/useDeviceId'
+import { useMessageActions } from '@/hooks/useMessageActions'
 import { formatTimeAgo, cn } from '@/lib/utils'
 import Badge from '@/components/ui/Badge'
 
@@ -14,7 +15,9 @@ interface MessageCardProps {
 
 export default function MessageCard({ message }: MessageCardProps) {
   const deviceId = useDeviceId()
+  const { deleteMessage } = useMessageActions()
   const [voting, setVoting] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
   const [localVotes, setLocalVotes] = useState({
     upvotes: message.upvotes,
     downvotes: message.downvotes
@@ -42,16 +45,13 @@ export default function MessageCard({ message }: MessageCardProps) {
 
       if (error) throw error
 
-      // Update local state optimistically
       if (userVote === voteType) {
-        // Remove vote
         setLocalVotes(prev => ({
           upvotes: voteType === 'up' ? prev.upvotes - 1 : prev.upvotes,
           downvotes: voteType === 'down' ? prev.downvotes - 1 : prev.downvotes
         }))
         setUserVote(null)
       } else {
-        // Add or change vote
         setLocalVotes(prev => ({
           upvotes: voteType === 'up' ? prev.upvotes + 1 : (userVote === 'up' ? prev.upvotes - 1 : prev.upvotes),
           downvotes: voteType === 'down' ? prev.downvotes + 1 : (userVote === 'down' ? prev.downvotes - 1 : prev.downvotes)
@@ -65,17 +65,27 @@ export default function MessageCard({ message }: MessageCardProps) {
     }
   }
 
+  const handleDelete = async () => {
+    if (window.confirm('🗑️ Delete this message? This cannot be undone.')) {
+      const success = await deleteMessage(message.id, message.device_id)
+      if (success) {
+        setShowMenu(false)
+      }
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -100 }}
       transition={{ duration: 0.3 }}
       className={cn(
-        "glass-dark rounded-xl p-4 hover:border-gray-700 transition-all duration-200 group",
+        "glass-dark rounded-xl p-4 hover:border-gray-700 transition-all duration-200 group relative",
         isOwnMessage && "border-green-500/30"
       )}
     >
-      {/* Header */}
+      {/* Header with Menu */}
       <div className="flex items-start gap-3 mb-3">
         {/* Emoji */}
         {message.emoji && (
@@ -90,22 +100,55 @@ export default function MessageCard({ message }: MessageCardProps) {
             {message.content}
           </p>
           
-          {isOwnMessage && (
-            <Badge variant="success" className="mt-2 text-xs">
-              Your Message
-            </Badge>
-          )}
+          <div className="flex items-center gap-2 mt-2">
+            {isOwnMessage && (
+              <Badge variant="success" className="text-xs">
+                Your Message
+              </Badge>
+            )}
+          </div>
         </div>
 
-        {/* Score Badge */}
-        <div className={cn(
-          "flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold",
-          score > 5 ? "bg-green-500/20 text-green-400" :
-          score > 0 ? "bg-blue-500/20 text-blue-400" :
-          score < 0 ? "bg-red-500/20 text-red-400" :
-          "bg-gray-700 text-gray-400"
-        )}>
-          {score > 0 ? '+' : ''}{score}
+        {/* Score & Menu */}
+        <div className="flex items-center gap-2">
+          {/* Score Badge */}
+          <div className={cn(
+            "flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold",
+            score > 5 ? "bg-green-500/20 text-green-400" :
+            score > 0 ? "bg-blue-500/20 text-blue-400" :
+            score < 0 ? "bg-red-500/20 text-red-400" :
+            "bg-gray-700 text-gray-400"
+          )}>
+            {score > 0 ? '+' : ''}{score}
+          </div>
+
+          {/* Delete Menu (Only for own messages) */}
+          {isOwnMessage && (
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <MoreVertical className="w-4 h-4 text-gray-400" />
+              </button>
+
+              {showMenu && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="absolute right-0 top-8 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-10 overflow-hidden"
+                >
+                  <button
+                    onClick={handleDelete}
+                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Message
+                  </button>
+                </motion.div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -123,7 +166,7 @@ export default function MessageCard({ message }: MessageCardProps) {
           </span>
         </div>
 
-        {/* Vote Buttons */}
+        {/* Vote Buttons (Only for other's messages) */}
         {!isOwnMessage && (
           <div className="flex items-center gap-1">
             <motion.button
