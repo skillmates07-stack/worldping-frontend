@@ -8,10 +8,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     params: {
       eventsPerSecond: 10
     }
+  },
+  auth: {
+    persistSession: false
   }
 })
 
-// Type definitions for our database
+// Database Types
 export interface Message {
   id: string
   device_id: string
@@ -23,6 +26,8 @@ export interface Message {
   downvotes: number
   created_at: string
   expires_at: string
+  country?: string
+  is_live_moment?: boolean
 }
 
 export interface Vote {
@@ -31,4 +36,21 @@ export interface Vote {
   device_id: string
   vote_type: 'up' | 'down'
   created_at: string
+}
+
+export interface UserStreak {
+  device_id: string
+  current_streak: number
+  longest_streak: number
+  countries_visited: string[]
+  last_post_date: string
+  total_messages: number
+  total_upvotes: number
+}
+
+export interface Achievement {
+  id: string
+  device_id: string
+  badge_key: string
+  earned_at: string
 }
