@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import MessageModal from '@/components/features/DropMessage/MessageModal'
 import TeleportButton from '@/components/features/Teleport/TeleportButton'
+import MoodHeatmap from '@/components/features/Mood/MoodHeatmap'
 import LockedMarker from './LockedMarker'
 import { useMessages } from '@/hooks/useMessages'
 import { useDeviceId } from '@/hooks/useDeviceId'
@@ -50,7 +51,6 @@ export default function MapContainer() {
   }
 
   const handleTeleport = (lat: number, lng: number, cityName: string) => {
-    // Smooth fly animation to random city
     setViewState({
       longitude: lng,
       latitude: lat,
@@ -99,7 +99,6 @@ export default function MapContainer() {
         onClick={handleMapClick}
         attributionControl={false}
       >
-        {/* Navigation Controls */}
         <NavigationControl position="top-right" showCompass={false} />
         <GeolocateControl
           position="top-right"
@@ -108,7 +107,6 @@ export default function MapContainer() {
           showUserLocation={true}
         />
 
-        {/* Message Markers */}
         {messages.map((message) => {
           const isUnlocked = isMessageUnlocked(message.id)
           const isOwnMessage = message.device_id === deviceId
@@ -128,7 +126,6 @@ export default function MapContainer() {
                   whileTap={{ scale: 0.95 }}
                   className="relative cursor-pointer group"
                 >
-                  {/* Message Pin */}
                   <div className={`w-10 h-10 ${
                     isOwnMessage 
                       ? 'bg-gradient-to-br from-green-500 to-emerald-600' 
@@ -137,17 +134,14 @@ export default function MapContainer() {
                     {message.emoji || '💬'}
                   </div>
 
-                  {/* Pin Tail */}
                   <div className="absolute bottom-[-6px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[6px] border-t-white"></div>
 
-                  {/* Vote Score Badge */}
                   {(message.upvotes - message.downvotes) > 0 && (
                     <div className="absolute -top-2 -right-2 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full shadow-md min-w-[20px] text-center">
                       {message.upvotes - message.downvotes}
                     </div>
                   )}
 
-                  {/* Own Message Indicator */}
                   {isOwnMessage && (
                     <div className="absolute -bottom-2 -right-2 bg-green-500 rounded-full p-0.5 shadow-md">
                       <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -157,12 +151,10 @@ export default function MapContainer() {
                     </div>
                   )}
 
-                  {/* Pulse for new messages */}
                   {new Date(message.created_at).getTime() > Date.now() - 60000 && (
                     <div className="absolute inset-0 w-10 h-10 bg-blue-400 rounded-full animate-ping opacity-30"></div>
                   )}
 
-                  {/* Quick Preview on Hover */}
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                     <div className="bg-black/95 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap max-w-[200px] truncate border border-gray-700 shadow-xl">
                       {message.content}
@@ -182,7 +174,9 @@ export default function MapContainer() {
         <TeleportButton onTeleport={handleTeleport} />
       </div>
 
-      {/* Message Creation Modal */}
+      {/* Mood Heatmap Widget - Bottom Right */}
+      <MoodHeatmap />
+
       <MessageModal
         isOpen={modalState.isOpen}
         onClose={handleCloseModal}
@@ -191,7 +185,6 @@ export default function MapContainer() {
         onSuccess={handleMessageSuccess}
       />
 
-      {/* Floating Hint for First-Time Users */}
       {userMessageCount === 0 && messages.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
