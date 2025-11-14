@@ -1,9 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, Send, Smile, Loader2, MapPin } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useDeviceId } from '@/hooks/useDeviceId'
 import { useStreak } from '@/hooks/useStreak'
+import { useMessages } from '@/hooks/useMessages'
+import { EMOJIS } from '@/lib/constants'
+import { getCountryFromCoordinates } from '@/lib/utils'
+import Button from '@/components/ui/Button'
+import toast from 'react-hot-toast'
+import UnlockCelebration from '../Unlock/UnlockCelebration'
 
 interface MessageModalProps {
   isOpen: boolean
@@ -13,23 +21,28 @@ interface MessageModalProps {
   onSuccess?: () => void
 }
 
-const EMOJI_LIST = ['😀', '😍', '🎉', '🔥', '❤️', '👍', '🌍', '✨', '💡', '🚀', '🎯', '💯', '👋', '🙌', '😎', '🤔', '😂', '🥳', '😊', '💪']
-
-export default function MessageModal({ isOpen, onClose, latitude, longitude, onSuccess }: MessageModalProps) {
+export default function MessageModal({ 
+  isOpen, 
+  onClose, 
+  latitude, 
+  longitude, 
+  onSuccess 
+}: MessageModalProps) {
   const [content, setContent] = useState('')
   const [selectedEmoji, setSelectedEmoji] = useState('')
-  const { updateStreakAfterPost } = useStreak()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showUnlock, setShowUnlock] = useState(false)
+  const [unlockedCount, setUnlockedCount] = useState(0)
+  
   const deviceId = useDeviceId()
+  const { updateStreakAfterPost } = useStreak()
+  const { unlockRandomMessages } = useMessages()
 
-  // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
       setContent('')
       setSelectedEmoji('')
-      setError('')
       setShowEmojiPicker(false)
     }
   }, [isOpen])
@@ -38,22 +51,21 @@ export default function MessageModal({ isOpen, onClose, latitude, longitude, onS
     e.preventDefault()
     
     if (!content.trim()) {
-      setError('Message cannot be empty')
+      toast.error('Please write a message')
       return
     }
 
     if (content.length > 500) {
-      setError('Message too long (max 500 characters)')
+      toast.error('Message too long (max 500 characters)')
       return
     }
 
     if (!deviceId) {
-      setError('Device ID not ready, please wait')
+      toast.error('Please wait a moment...')
       return
     }
 
     setIsSubmitting(true)
-    setError('')
 
     try {
       const { error: insertError } = await supabase
@@ -69,12 +81,26 @@ export default function MessageModal({ isOpen, onClose, latitude, longitude, onS
 
       if (insertError) throw insertError
 
-      // Success!
-      onSuccess?.()
-      onClose()
+      // Unlock random messages as reward
+      const count = unlockRandomMessages(10)
+      if (count > 0) {
+        setUnlockedCount(count)
+        setShowUnlock(true)
+      }
+
+      // Update streak
+      const country = getCountryFromCoordinates(latitude, longitude)
+      await updateStreakAfterPost(country)
+
+      toast.success('🌍 Message dropped successfully!')
+
+      setTimeout(() => {
+        onSuccess?.()
+        onClose()
+      }, count > 0 ? 3500 : 500)
     } catch (err: any) {
       console.error('Error creating message:', err)
-      setError(err.message || 'Failed to create message. Please try again.')
+      toast.error(err.message || 'Failed to create message')
     } finally {
       setIsSubmitting(false)
     }
@@ -83,98 +109,149 @@ export default function MessageModal({ isOpen, onClose, latitude, longitude, onS
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-brand-gray border border-gray-700 rounded-2xl shadow-2xl max-w-lg w-full p-6 animate-slideUp">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-brand-accent">📍 Drop a Message</h2>
-          <button
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors p-2"
-            aria-label="Close modal"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Location Info */}
-        <p className="text-sm text-gray-400 mb-4">
-          {latitude.toFixed(4)}°, {longitude.toFixed(4)}°
-        </p>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Emoji Picker Toggle */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Add an Emoji (optional)
-            </label>
-            <button
-              type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="px-4 py-2 bg-brand-dark border border-gray-600 rounded-lg hover:border-brand-accent transition-colors text-2xl"
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
             >
-              {selectedEmoji || '😊 Pick'}
-            </button>
-
-            {showEmojiPicker && (
-              <div className="mt-2 p-3 bg-brand-dark border border-gray-600 rounded-lg grid grid-cols-10 gap-2 max-h-32 overflow-y-auto">
-                {EMOJI_LIST.map((emoji) => (
+              {/* Header */}
+              <div className="relative px-6 py-5 border-b border-gray-800 bg-gradient-to-r from-blue-600/10 to-purple-600/10">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold gradient-text flex items-center gap-2">
+                    📍 Drop a Message
+                  </h2>
                   <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => {
-                      setSelectedEmoji(emoji)
-                      setShowEmojiPicker(false)
-                    }}
-                    className="text-2xl hover:scale-125 transition-transform"
+                    onClick={onClose}
+                    className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg"
                   >
-                    {emoji}
+                    <X className="w-5 h-5" />
                   </button>
-                ))}
+                </div>
+                
+                <div className="flex items-center gap-2 text-sm text-gray-400 mt-2">
+                  <MapPin className="w-4 h-4" />
+                  <span>{latitude.toFixed(4)}°, {longitude.toFixed(4)}°</span>
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Message Input */}
-          <div>
-            <label htmlFor="message" className="block text-sm font-medium text-gray-300 mb-2">
-              Your Message
-            </label>
-            <textarea
-              id="message"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="What's on your mind? Share with the world..."
-              className="w-full px-4 py-3 bg-brand-dark border border-gray-600 rounded-lg focus:outline-none focus:border-brand-accent text-white placeholder-gray-500 resize-none"
-              rows={4}
-              maxLength={500}
-            />
-            <div className="text-right text-xs text-gray-500 mt-1">
-              {content.length}/500
-            </div>
-          </div>
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                {/* Emoji Picker */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Add an Emoji (optional)
+                  </label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className="flex items-center gap-2 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl hover:border-blue-500 transition-colors w-full justify-between"
+                    >
+                      <span className="text-2xl">{selectedEmoji || '😊'}</span>
+                      <Smile className="w-5 h-5 text-gray-400" />
+                    </button>
 
-          {/* Error Message */}
-          {error && (
-            <div className="p-3 bg-red-500/10 border border-red-500 rounded-lg text-red-400 text-sm">
-              {error}
-            </div>
-          )}
+                    <AnimatePresence>
+                      {showEmojiPicker && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="absolute top-full mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl p-3 shadow-xl z-10 max-h-48 overflow-y-auto"
+                        >
+                          <div className="grid grid-cols-8 gap-2">
+                            {EMOJIS.map((emoji) => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedEmoji(emoji)
+                                  setShowEmojiPicker(false)
+                                }}
+                                className="text-2xl hover:scale-125 transition-transform p-1 hover:bg-gray-700 rounded"
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isSubmitting || !content.trim()}
-            className="w-full py-3 px-4 bg-brand-accent hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors duration-200"
-          >
-            {isSubmitting ? 'Dropping...' : '🌍 Drop Message'}
-          </button>
-        </form>
-      </div>
-    </div>
+                {/* Message Input */}
+                <div>
+                  <label htmlFor="message" className="block text-sm font-medium text-gray-300 mb-2">
+                    Your Message
+                  </label>
+                  <textarea
+                    id="message"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder="What's on your mind? Share with the world..."
+                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-500 resize-none transition-all"
+                    rows={4}
+                    maxLength={500}
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-xs text-gray-500">
+                      Share your thoughts, ask a question, or say hello!
+                    </span>
+                    <span className={`text-xs font-medium ${
+                      content.length > 450 ? 'text-red-400' : 'text-gray-500'
+                    }`}>
+                      {content.length}/500
+                    </span>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  disabled={isSubmitting || !content.trim()}
+                  isLoading={isSubmitting}
+                  size="lg"
+                  className="w-full"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Dropping...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5 mr-2" />
+                      🌍 Drop Message
+                    </>
+                  )}
+                </Button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Unlock Celebration */}
+      {showUnlock && (
+        <UnlockCelebration 
+          count={unlockedCount} 
+          onClose={() => setShowUnlock(false)} 
+        />
+      )}
+    </>
   )
 }
-
