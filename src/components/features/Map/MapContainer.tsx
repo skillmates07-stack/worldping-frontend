@@ -10,12 +10,15 @@ import MoodHeatmap from '@/components/features/Mood/MoodHeatmap'
 import DailyChallenges from '@/components/features/Challenges/DailyChallenges'
 import LiveEventMarker from '@/components/features/Events/LiveEventMarker'
 import CreateEventModal from '@/components/features/Events/CreateEventModal'
+import SnapMarker from '@/components/features/Snaps/SnapMarker'
+import SnapViewerModal from '@/components/features/Snaps/SnapViewerModal'
+import CreateSnapModal from '@/components/features/Snaps/CreateSnapModal'
 import LockedMarker from './LockedMarker'
 import { useMessages } from '@/hooks/useMessages'
 import { useDeviceId } from '@/hooks/useDeviceId'
 import { supabase } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
-import { Plus, MapPinned, Eye, TrendingUp, Zap } from 'lucide-react'
+import { Plus, MapPinned, Camera } from 'lucide-react'
 
 interface LiveEvent {
   id: string
@@ -58,6 +61,9 @@ export default function MapContainer() {
     lng: 0
   })
 
+  const [snapModalOpen, setSnapModalOpen] = useState(false)
+  const [selectedSnap, setSelectedSnap] = useState<any>(null)
+  const [snaps, setSnaps] = useState<any[]>([])
   const [viewingMessage, setViewingMessage] = useState<any>(null)
   const [selectedEvent, setSelectedEvent] = useState<LiveEvent | null>(null)
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([])
@@ -76,6 +82,12 @@ export default function MapContainer() {
     subscribeToLiveEvents()
   }, [])
 
+  // Fetch snaps
+  useEffect(() => {
+    fetchSnaps()
+    subscribeToSnaps()
+  }, [])
+
   async function getUserLocation() {
     if (!navigator.geolocation) {
       setLocationError('Geolocation not supported')
@@ -88,7 +100,6 @@ export default function MapContainer() {
         const { latitude, longitude } = position.coords
         setUserLocation({ lat: latitude, lng: longitude })
         
-        // Center map on user location
         setViewState({
           longitude,
           latitude,
@@ -146,13 +157,47 @@ export default function MapContainer() {
     }
   }
 
-  // Handle clicking existing messages (VIEW mode, not create)
+  async function fetchSnaps() {
+    try {
+      const { data, error } = await supabase
+        .from('snaps')
+        .select('*')
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setSnaps(data || [])
+    } catch (error) {
+      console.error('Error fetching snaps:', error)
+    }
+  }
+
+  function subscribeToSnaps() {
+    const channel = supabase
+      .channel('snaps-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'snaps'
+        },
+        (payload) => {
+          setSnaps(prev => [payload.new as any, ...prev])
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }
+
   const handleMessageClick = (message: any) => {
     const isUnlocked = isMessageUnlocked(message.id)
     const isOwnMessage = message.device_id === deviceId
 
     if (isUnlocked || isOwnMessage) {
-      // Show message details (can add modal later)
       toast((t) => (
         <div className="flex flex-col gap-2 max-w-sm">
           <div className="flex items-center gap-2">
@@ -173,11 +218,10 @@ export default function MapContainer() {
     }
   }
 
-  // Open modal to post at USER'S location
   const handlePostAtMyLocation = () => {
     if (!userLocation) {
       toast.error('📍 Location not available. Please enable GPS.')
-      getUserLocation() // Try again
+      getUserLocation()
       return
     }
 
@@ -186,6 +230,15 @@ export default function MapContainer() {
       lat: userLocation.lat,
       lng: userLocation.lng
     })
+  }
+
+  const handlePostSnapAtMyLocation = () => {
+    if (!userLocation) {
+      toast.error('📍 Enable location to post snaps')
+      getUserLocation()
+      return
+    }
+    setSnapModalOpen(true)
   }
 
   const handleCloseModal = () => {
@@ -341,6 +394,20 @@ export default function MapContainer() {
             />
           </Marker>
         ))}
+
+        {/* Snap Story Markers */}
+        {snaps.map((snap) => (
+          <Marker
+            key={snap.id}
+            longitude={snap.longitude}
+            latitude={snap.latitude}
+            anchor="bottom"
+          >
+            <SnapMarker 
+              onClick={() => setSelectedSnap(snap)}
+            />
+          </Marker>
+        ))}
       </Map>
 
       {/* Top Left - Random Teleport */}
@@ -348,8 +415,9 @@ export default function MapContainer() {
         <TeleportButton onTeleport={handleTeleport} />
       </div>
 
-      {/* Floating POST Button (Bottom Center) */}
-      <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-30">
+      {/* Floating Action Buttons (Bottom Center) */}
+      <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-30 flex items-center gap-4">
+        {/* Post Message Button */}
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
@@ -358,6 +426,16 @@ export default function MapContainer() {
         >
           <Plus className="w-6 h-6" />
           Post Here
+        </motion.button>
+
+        {/* Post Snap Button */}
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={handlePostSnapAtMyLocation}
+          className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all"
+        >
+          <Camera className="w-6 h-6" />
         </motion.button>
       </div>
 
@@ -386,6 +464,22 @@ export default function MapContainer() {
           fetchLiveEvents()
           setEventModalState(prev => ({ ...prev, isOpen: false }))
         }}
+      />
+
+      {/* Snap Viewer Modal */}
+      <SnapViewerModal 
+        snap={selectedSnap}
+        isOpen={!!selectedSnap}
+        onClose={() => setSelectedSnap(null)}
+      />
+
+      {/* Create Snap Modal */}
+      <CreateSnapModal
+        isOpen={snapModalOpen}
+        onClose={() => setSnapModalOpen(false)}
+        latitude={userLocation?.lat || 0}
+        longitude={userLocation?.lng || 0}
+        onSuccess={fetchSnaps}
       />
 
       {/* Location Permission Hint */}
