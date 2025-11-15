@@ -15,7 +15,7 @@ import { useMessages } from '@/hooks/useMessages'
 import { useDeviceId } from '@/hooks/useDeviceId'
 import { supabase } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
-import { Zap } from 'lucide-react'
+import { Plus, MapPinned, Eye, TrendingUp, Zap } from 'lucide-react'
 
 interface LiveEvent {
   id: string
@@ -34,6 +34,9 @@ export default function MapContainer() {
     latitude: 20,
     zoom: 2
   })
+
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null)
+  const [locationError, setLocationError] = useState<string | null>(null)
 
   const [modalState, setModalState] = useState<{
     isOpen: boolean
@@ -55,17 +58,57 @@ export default function MapContainer() {
     lng: 0
   })
 
+  const [viewingMessage, setViewingMessage] = useState<any>(null)
   const [selectedEvent, setSelectedEvent] = useState<LiveEvent | null>(null)
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([])
 
   const { messages, refetch, isMessageUnlocked, userMessageCount } = useMessages()
   const deviceId = useDeviceId()
 
+  // Get user's GPS location on mount
+  useEffect(() => {
+    getUserLocation()
+  }, [])
+
   // Fetch live events
   useEffect(() => {
     fetchLiveEvents()
     subscribeToLiveEvents()
   }, [])
+
+  async function getUserLocation() {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation not supported')
+      toast.error('📍 Location not supported on this device')
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords
+        setUserLocation({ lat: latitude, lng: longitude })
+        
+        // Center map on user location
+        setViewState({
+          longitude,
+          latitude,
+          zoom: 12
+        })
+        
+        toast.success('📍 Location detected!', { duration: 2000 })
+      },
+      (error) => {
+        console.error('Location error:', error)
+        setLocationError(error.message)
+        toast.error('📍 Please enable location access')
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    )
+  }
 
   async function fetchLiveEvents() {
     try {
@@ -103,12 +146,45 @@ export default function MapContainer() {
     }
   }
 
-  const handleMapClick = (e: any) => {
-    const { lng, lat } = e.lngLat
+  // Handle clicking existing messages (VIEW mode, not create)
+  const handleMessageClick = (message: any) => {
+    const isUnlocked = isMessageUnlocked(message.id)
+    const isOwnMessage = message.device_id === deviceId
+
+    if (isUnlocked || isOwnMessage) {
+      // Show message details (can add modal later)
+      toast((t) => (
+        <div className="flex flex-col gap-2 max-w-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{message.emoji || '💬'}</span>
+            <p className="font-bold text-white">{message.content}</p>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-gray-400">
+            <span>👍 {message.upvotes}</span>
+            <span>💬 {message.reply_count || 0} replies</span>
+          </div>
+          {isOwnMessage && (
+            <span className="text-xs text-green-400">✓ Your message</span>
+          )}
+        </div>
+      ), {
+        duration: 5000
+      })
+    }
+  }
+
+  // Open modal to post at USER'S location
+  const handlePostAtMyLocation = () => {
+    if (!userLocation) {
+      toast.error('📍 Location not available. Please enable GPS.')
+      getUserLocation() // Try again
+      return
+    }
+
     setModalState({
       isOpen: true,
-      lat,
-      lng
+      lat: userLocation.lat,
+      lng: userLocation.lng
     })
   }
 
@@ -154,33 +230,7 @@ export default function MapContainer() {
   }
 
   const handleLockedMarkerClick = (messageId: string) => {
-    const message = messages.find(m => m.id === messageId)
-    if (message) {
-      toast((t) => (
-        <div className="flex flex-col gap-2">
-          <p className="font-semibold">🔒 Message Locked</p>
-          <p className="text-sm text-gray-300">
-            Drop your first message to unlock messages worldwide!
-          </p>
-          <button
-            onClick={() => {
-              toast.dismiss(t.id)
-              setModalState({
-                isOpen: true,
-                lat: message.latitude,
-                lng: message.longitude
-              })
-            }}
-            className="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition-colors"
-          >
-            Drop Message Here
-          </button>
-        </div>
-      ), {
-        duration: 5000,
-        style: { maxWidth: '320px' }
-      })
-    }
+    toast.error('🔒 Drop your first message to unlock!')
   }
 
   return (
@@ -191,7 +241,6 @@ export default function MapContainer() {
         onMove={evt => setViewState(evt.viewState)}
         mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
         style={{ width: '100%', height: '100%' }}
-        onClick={handleMapClick}
         attributionControl={false}
       >
         <NavigationControl position="top-right" showCompass={false} />
@@ -200,9 +249,35 @@ export default function MapContainer() {
           trackUserLocation
           positionOptions={{ enableHighAccuracy: true }}
           showUserLocation={true}
+          onGeolocate={(e) => {
+            setUserLocation({ lat: e.coords.latitude, lng: e.coords.longitude })
+          }}
         />
 
-        {/* Regular Message Markers */}
+        {/* User's Location Marker (YOU ARE HERE) */}
+        {userLocation && (
+          <Marker
+            longitude={userLocation.lng}
+            latitude={userLocation.lat}
+            anchor="center"
+          >
+            <motion.div
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="relative"
+            >
+              <div className="w-16 h-16 bg-blue-500/20 rounded-full absolute inset-0 animate-ping"></div>
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center border-4 border-white shadow-2xl">
+                <MapPinned className="w-8 h-8 text-white" />
+              </div>
+              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded whitespace-nowrap">
+                You are here
+              </div>
+            </motion.div>
+          </Marker>
+        )}
+
+        {/* Regular Message Markers (CLICK TO VIEW) */}
         {messages.map((message) => {
           const isUnlocked = isMessageUnlocked(message.id)
           const isOwnMessage = message.device_id === deviceId
@@ -220,6 +295,7 @@ export default function MapContainer() {
                   animate={{ scale: 1 }}
                   whileHover={{ scale: 1.15 }}
                   whileTap={{ scale: 0.95 }}
+                  onClick={() => handleMessageClick(message)}
                   className="relative cursor-pointer group"
                 >
                   <div className={`w-10 h-10 ${
@@ -236,19 +312,6 @@ export default function MapContainer() {
                     <div className="absolute -top-2 -right-2 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full shadow-md min-w-[20px] text-center">
                       {message.upvotes - message.downvotes}
                     </div>
-                  )}
-
-                  {isOwnMessage && (
-                    <div className="absolute -bottom-2 -right-2 bg-green-500 rounded-full p-0.5 shadow-md">
-                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                        <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
-
-                  {new Date(message.created_at).getTime() > Date.now() - 60000 && (
-                    <div className="absolute inset-0 w-10 h-10 bg-blue-400 rounded-full animate-ping opacity-30"></div>
                   )}
 
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
@@ -280,26 +343,21 @@ export default function MapContainer() {
         ))}
       </Map>
 
-      {/* Top Left - Random Teleport & Create Event */}
-      <div className="absolute top-4 left-4 z-30 flex flex-col gap-2">
+      {/* Top Left - Random Teleport */}
+      <div className="absolute top-4 left-4 z-30">
         <TeleportButton onTeleport={handleTeleport} />
-        
-        {/* Create Event Button */}
+      </div>
+
+      {/* Floating POST Button (Bottom Center) */}
+      <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-30">
         <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            // Open event modal at current center
-            setEventModalState({
-              isOpen: true,
-              lat: viewState.latitude,
-              lng: viewState.longitude
-            })
-          }}
-          className="bg-gradient-to-r from-red-600 to-orange-600 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-red-500/50 transition-all font-medium flex items-center gap-2"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={handlePostAtMyLocation}
+          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 font-bold text-lg hover:shadow-blue-500/50 transition-all"
         >
-          <Zap className="w-5 h-5" />
-          <span className="hidden sm:inline">Create Event</span>
+          <Plus className="w-6 h-6" />
+          Post Here
         </motion.button>
       </div>
 
@@ -309,7 +367,7 @@ export default function MapContainer() {
       {/* Top Right - Daily Challenges */}
       <DailyChallenges />
 
-      {/* Message Modal */}
+      {/* Message Modal (Posts at YOUR location) */}
       <MessageModal
         isOpen={modalState.isOpen}
         onClose={handleCloseModal}
@@ -330,17 +388,16 @@ export default function MapContainer() {
         }}
       />
 
-      {/* First-time user hint */}
-      {userMessageCount === 0 && messages.length > 0 && (
+      {/* Location Permission Hint */}
+      {!userLocation && !locationError && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 2 }}
-          className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-2 z-30"
+          className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-2 z-30"
         >
-          <span className="text-2xl">👆</span>
+          <MapPinned className="w-5 h-5 animate-pulse" />
           <p className="text-sm font-medium">
-            Tap the map to drop your first message!
+            Enable location to post messages!
           </p>
         </motion.div>
       )}
