@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { Globe, Sparkles, TrendingUp } from 'lucide-react'
 import { MessageFeed } from '@/components/features/MessageFeed'
+import ProfilePanel from '@/components/features/Profile/ProfilePanel'
 import StreakBadge from '@/components/features/Streak/StreakBadge'
 import UnifiedChatPanel from '@/components/features/Chat/UnifiedChatPanel'
 
@@ -111,9 +112,12 @@ export default function HomePage() {
           <MessageFeed />
         </motion.aside>
       </main>
-
+      
+      {/* Profile Panel */}
+        <ProfilePanel />
       {/* Unified Chat (Global + City) */}
       <UnifiedChatPanel />
     </div>
   )
 }
+
