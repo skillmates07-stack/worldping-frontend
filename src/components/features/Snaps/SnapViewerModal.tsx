@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Heart, Flame, Zap, Eye, MessageCircle } from 'lucide-react'
+import { X, Heart, Flame, Zap, Eye, MessageCircle, Camera } from 'lucide-react'  // ✅ Added Camera
 import { supabase } from '@/lib/supabase/client'
 import { useDeviceId } from '@/hooks/useDeviceId'
 import { formatTimeAgo } from '@/lib/utils'
