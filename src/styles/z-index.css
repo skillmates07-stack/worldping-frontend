@@ -1,0 +1,55 @@
+/* Z-INDEX SYSTEM - Industry Standard Layer Management */
+
+/* Base map layer */
+.map-container {
+  z-index: 0;
+}
+
+/* Map markers */
+.map-marker {
+  z-index: 10;
+}
+
+/* Map controls (zoom, etc.) */
+.map-controls {
+  z-index: 20;
+}
+
+/* Floating action buttons (Post Here, Camera) */
+.floating-action-buttons {
+  z-index: 30;
+}
+
+/* Side panels (Mood Map, Challenges) */
+.side-panel {
+  z-index: 40;
+}
+
+/* Bottom panels (Discover, Chat) */
+.bottom-panel {
+  z-index: 50;
+}
+
+/* Profile panel (left side) */
+.profile-panel {
+  z-index: 55;
+}
+
+/* Modals (Message, Snap, etc.) */
+.modal-overlay {
+  z-index: 60;
+}
+
+.modal-content {
+  z-index: 61;
+}
+
+/* Toasts/Notifications */
+.toast-notification {
+  z-index: 70;
+}
+
+/* Top navigation */
+.top-nav {
+  z-index: 80;
+}
