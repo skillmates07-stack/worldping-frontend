@@ -135,42 +135,42 @@ export default function UnifiedChatPanel() {
 
   return (
     <>
-      {/* Floating Chat Button */}
-      {!isOpen && (
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all group"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-        >
-          <Globe className="w-7 h-7 group-hover:rotate-180 transition-transform duration-500" />
-          <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">
-            {onlineCount}
-          </div>
-        </motion.button>
-      )}
-
-      {/* Unified Chat Panel */}
-      // Change this part (around line 220):
-        <AnimatePresence>
-          {isOpen && (
-            <motion.div
-              initial={{ y: 600, opacity: 0 }}
-              animate={{ 
-                y: 0, 
-                opacity: 1,
-                height: isMinimized ? '60px' : '500px' 
-              }}
-              exit={{ y: 600, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed bottom-6 right-6 w-96 bg-gray-900 border-2 border-purple-600 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col"
-              style={{ maxWidth: 'calc(100vw - 3rem)' }} // Add this to prevent overflow
-            >
-
+      {/* Floating Globe Button - NO BLACK BACKGROUND */}
+      <AnimatePresence>
+        {!isOpen && (
+          <motion.button
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            onClick={() => setIsOpen(true)}
+            className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all group"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
           >
-            {/* Header with Tabs */}
+            <Globe className="w-7 h-7 group-hover:rotate-180 transition-transform duration-500" />
+            <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">
+              {onlineCount}
+            </div>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Chat Panel - NO BACKDROP OVERLAY */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ y: 600, opacity: 0 }}
+            animate={{ 
+              y: 0, 
+              opacity: 1,
+              height: isMinimized ? '60px' : '500px' 
+            }}
+            exit={{ y: 600, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed bottom-6 right-6 w-96 bg-gray-900 border-2 border-purple-600 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col"
+            style={{ maxWidth: 'calc(100vw - 3rem)' }}
+          >
+            {/* Header */}
             <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex-1">
@@ -199,7 +199,6 @@ export default function UnifiedChatPanel() {
                 </div>
               </div>
 
-              {/* Tab Buttons */}
               {!isMinimized && (
                 <div className="flex gap-2">
                   <button
@@ -230,7 +229,6 @@ export default function UnifiedChatPanel() {
 
             {!isMinimized && (
               <>
-                {/* City Selector */}
                 {activeTab === 'city' && (
                   <div className="p-2 bg-gray-800 border-b border-gray-700">
                     <select
@@ -245,7 +243,6 @@ export default function UnifiedChatPanel() {
                   </div>
                 )}
 
-                {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-950">
                   {loading ? (
                     <div className="flex items-center justify-center h-full">
@@ -291,7 +288,6 @@ export default function UnifiedChatPanel() {
                   )}
                 </div>
 
-                {/* Input */}
                 <form onSubmit={handleSend} className="p-2 border-t border-gray-800 bg-gray-900">
                   <div className="flex gap-2">
                     <input
