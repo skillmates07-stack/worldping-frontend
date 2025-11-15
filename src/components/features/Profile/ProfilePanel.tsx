@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, X, TrendingUp, MapPin, Trophy, Star, Globe, Calendar } from 'lucide-react'
+import { User, X, TrendingUp, MapPin, Trophy, Globe, Calendar } from 'lucide-react'
 import { useDeviceId } from '@/hooks/useDeviceId'
 import { useStreak } from '@/hooks/useStreak'
 import { supabase } from '@/lib/supabase/client'
@@ -18,6 +18,7 @@ export default function ProfilePanel() {
     rank: 0
   })
   const [loading, setLoading] = useState(true)
+  const [earnedAchievements, setEarnedAchievements] = useState<Array<[string, any]>>([])
   
   const deviceId = useDeviceId()
   const { streak } = useStreak()
@@ -25,6 +26,7 @@ export default function ProfilePanel() {
   useEffect(() => {
     if (isOpen && deviceId) {
       fetchStats()
+      loadAchievements()
     }
   }, [isOpen, deviceId])
 
@@ -32,7 +34,6 @@ export default function ProfilePanel() {
     try {
       setLoading(true)
       
-      // Get user's messages
       const { data: messages, error } = await supabase
         .from('messages')
         .select('upvotes, downvotes')
@@ -44,7 +45,6 @@ export default function ProfilePanel() {
       const totalUpvotes = messages?.reduce((sum, m) => sum + m.upvotes, 0) || 0
       const totalDownvotes = messages?.reduce((sum, m) => sum + m.downvotes, 0) || 0
 
-      // Calculate rank (simplified)
       const score = totalUpvotes - totalDownvotes + totalMessages * 2
       const rank = Math.max(1, Math.floor(10000 / (score + 1)))
 
@@ -56,13 +56,17 @@ export default function ProfilePanel() {
     }
   }
 
-  const earnedAchievements = Object.entries(ACHIEVEMENT_BADGES).filter(([key]) => {
-    return localStorage.getItem(`achievement_${deviceId}_${key}`) === 'true'
-  })
+  function loadAchievements() {
+    if (typeof window !== 'undefined' && deviceId) {
+      const earned = Object.entries(ACHIEVEMENT_BADGES).filter(([key]) => {
+        return localStorage.getItem(`achievement_${deviceId}_${key}`) === 'true'
+      })
+      setEarnedAchievements(earned)
+    }
+  }
 
   return (
     <>
-      {/* Profile Button */}
       {!isOpen && (
         <motion.button
           initial={{ scale: 0 }}
@@ -76,7 +80,6 @@ export default function ProfilePanel() {
         </motion.button>
       )}
 
-      {/* Profile Panel */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -86,7 +89,6 @@ export default function ProfilePanel() {
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className="fixed left-0 top-0 h-full w-full sm:w-96 bg-gray-900 border-r border-gray-800 shadow-2xl z-50 overflow-y-auto"
           >
-            {/* Header */}
             <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-cyan-600 p-4 flex items-center justify-between z-10">
               <div>
                 <h3 className="font-bold text-white text-lg flex items-center gap-2">
@@ -109,7 +111,6 @@ export default function ProfilePanel() {
               </div>
             ) : (
               <div className="p-6 space-y-6">
-                {/* Stats Grid */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
                     <div className="flex items-center gap-2 mb-2">
@@ -144,7 +145,6 @@ export default function ProfilePanel() {
                   </div>
                 </div>
 
-                {/* Streak Section */}
                 <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="font-bold text-white">🔥 Current Streak</h4>
@@ -158,7 +158,6 @@ export default function ProfilePanel() {
                   </div>
                 </div>
 
-                {/* Achievements */}
                 <div>
                   <h4 className="font-bold text-white mb-3 flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-yellow-400" />
@@ -188,7 +187,6 @@ export default function ProfilePanel() {
                   </div>
                 </div>
 
-                {/* Recent Countries */}
                 <div>
                   <h4 className="font-bold text-white mb-3 flex items-center gap-2">
                     <Globe className="w-5 h-5 text-blue-400" />
@@ -208,7 +206,6 @@ export default function ProfilePanel() {
                   )}
                 </div>
 
-                {/* Member Since */}
                 <div className="pt-4 border-t border-gray-800">
                   <div className="flex items-center gap-2 text-gray-500 text-sm">
                     <Calendar className="w-4 h-4" />
