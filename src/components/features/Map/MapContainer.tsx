@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Map, { NavigationControl, GeolocateControl, Marker } from 'react-map-gl/maplibre'
 import { motion, AnimatePresence } from 'framer-motion'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -8,10 +8,24 @@ import MessageModal from '@/components/features/DropMessage/MessageModal'
 import TeleportButton from '@/components/features/Teleport/TeleportButton'
 import MoodHeatmap from '@/components/features/Mood/MoodHeatmap'
 import DailyChallenges from '@/components/features/Challenges/DailyChallenges'
+import LiveEventMarker from '@/components/features/Events/LiveEventMarker'
+import CreateEventModal from '@/components/features/Events/CreateEventModal'
 import LockedMarker from './LockedMarker'
 import { useMessages } from '@/hooks/useMessages'
 import { useDeviceId } from '@/hooks/useDeviceId'
+import { supabase } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
+import { Zap } from 'lucide-react'
+
+interface LiveEvent {
+  id: string
+  type: 'concert' | 'protest' | 'celebration' | 'emergency' | 'other'
+  title: string
+  description: string
+  latitude: number
+  longitude: number
+  created_at: string
+}
 
 export default function MapContainer() {
   const mapRef = useRef<any>(null)
@@ -31,8 +45,63 @@ export default function MapContainer() {
     lng: 0
   })
 
+  const [eventModalState, setEventModalState] = useState<{
+    isOpen: boolean
+    lat: number
+    lng: number
+  }>({
+    isOpen: false,
+    lat: 0,
+    lng: 0
+  })
+
+  const [selectedEvent, setSelectedEvent] = useState<LiveEvent | null>(null)
+  const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([])
+
   const { messages, refetch, isMessageUnlocked, userMessageCount } = useMessages()
   const deviceId = useDeviceId()
+
+  // Fetch live events
+  useEffect(() => {
+    fetchLiveEvents()
+    subscribeToLiveEvents()
+  }, [])
+
+  async function fetchLiveEvents() {
+    try {
+      const { data, error } = await supabase
+        .from('live_events')
+        .select('*')
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setLiveEvents(data || [])
+    } catch (error) {
+      console.error('Error fetching live events:', error)
+    }
+  }
+
+  function subscribeToLiveEvents() {
+    const channel = supabase
+      .channel('live-events')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'live_events'
+        },
+        (payload) => {
+          setLiveEvents(prev => [payload.new as LiveEvent, ...prev])
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }
 
   const handleMapClick = (e: any) => {
     const { lng, lat } = e.lngLat
@@ -56,6 +125,31 @@ export default function MapContainer() {
       longitude: lng,
       latitude: lat,
       zoom: 12
+    })
+  }
+
+  const handleEventMarkerClick = (event: LiveEvent) => {
+    setSelectedEvent(event)
+    toast((t) => (
+      <div className="flex flex-col gap-2 max-w-sm">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">
+            {event.type === 'concert' ? '🎵' : 
+             event.type === 'protest' ? '📢' : 
+             event.type === 'celebration' ? '🎉' : 
+             event.type === 'emergency' ? '⚠️' : '💫'}
+          </span>
+          <p className="font-bold text-white">{event.title}</p>
+        </div>
+        <p className="text-sm text-gray-300">{event.description}</p>
+        <div className="flex items-center gap-1 text-xs text-red-400">
+          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+          <span>LIVE NOW</span>
+        </div>
+      </div>
+    ), {
+      duration: 5000,
+      style: { maxWidth: '400px' }
     })
   }
 
@@ -108,6 +202,7 @@ export default function MapContainer() {
           showUserLocation={true}
         />
 
+        {/* Regular Message Markers */}
         {messages.map((message) => {
           const isUnlocked = isMessageUnlocked(message.id)
           const isOwnMessage = message.device_id === deviceId
@@ -168,11 +263,44 @@ export default function MapContainer() {
             </Marker>
           )
         })}
+
+        {/* Live Event Markers */}
+        {liveEvents.map((event) => (
+          <Marker
+            key={event.id}
+            longitude={event.longitude}
+            latitude={event.latitude}
+            anchor="bottom"
+          >
+            <LiveEventMarker 
+              event={event}
+              onClick={() => handleEventMarkerClick(event)}
+            />
+          </Marker>
+        ))}
       </Map>
 
-      {/* Top Left - Random Teleport */}
-      <div className="absolute top-4 left-4 z-30">
+      {/* Top Left - Random Teleport & Create Event */}
+      <div className="absolute top-4 left-4 z-30 flex flex-col gap-2">
         <TeleportButton onTeleport={handleTeleport} />
+        
+        {/* Create Event Button */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => {
+            // Open event modal at current center
+            setEventModalState({
+              isOpen: true,
+              lat: viewState.latitude,
+              lng: viewState.longitude
+            })
+          }}
+          className="bg-gradient-to-r from-red-600 to-orange-600 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-red-500/50 transition-all font-medium flex items-center gap-2"
+        >
+          <Zap className="w-5 h-5" />
+          <span className="hidden sm:inline">Create Event</span>
+        </motion.button>
       </div>
 
       {/* Bottom Right - Mood Heatmap */}
@@ -188,6 +316,18 @@ export default function MapContainer() {
         latitude={modalState.lat}
         longitude={modalState.lng}
         onSuccess={handleMessageSuccess}
+      />
+
+      {/* Live Event Creation Modal */}
+      <CreateEventModal
+        isOpen={eventModalState.isOpen}
+        onClose={() => setEventModalState(prev => ({ ...prev, isOpen: false }))}
+        latitude={eventModalState.lat}
+        longitude={eventModalState.lng}
+        onSuccess={() => {
+          fetchLiveEvents()
+          setEventModalState(prev => ({ ...prev, isOpen: false }))
+        }}
       />
 
       {/* First-time user hint */}
