@@ -153,18 +153,22 @@ export default function UnifiedChatPanel() {
       )}
 
       {/* Unified Chat Panel */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ y: 600, opacity: 0 }}
-            animate={{ 
-              y: 0, 
-              opacity: 1,
-              height: isMinimized ? '60px' : '500px' 
-            }}
-            exit={{ y: 600, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed bottom-6 right-6 w-96 bg-gray-900 border-2 border-purple-600 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col"
+      // Change this part (around line 220):
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ y: 600, opacity: 0 }}
+              animate={{ 
+                y: 0, 
+                opacity: 1,
+                height: isMinimized ? '60px' : '500px' 
+              }}
+              exit={{ y: 600, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="fixed bottom-6 right-6 w-96 bg-gray-900 border-2 border-purple-600 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col"
+              style={{ maxWidth: 'calc(100vw - 3rem)' }} // Add this to prevent overflow
+            >
+
           >
             {/* Header with Tabs */}
             <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-3">
