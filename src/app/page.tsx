@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { Globe, Sparkles, TrendingUp } from 'lucide-react'
 import { MessageFeed } from '@/components/features/MessageFeed'
+import DiscoverPanel from '@/components/features/Discover/DiscoverPanel'
 import ProfilePanel from '@/components/features/Profile/ProfilePanel'
 import StreakBadge from '@/components/features/Streak/StreakBadge'
 import UnifiedChatPanel from '@/components/features/Chat/UnifiedChatPanel'
@@ -115,9 +116,14 @@ export default function HomePage() {
       
       {/* Profile Panel */}
         <ProfilePanel />
+
+      {/* Discover Panel */}
+        <DiscoverPanel />
+
       {/* Unified Chat (Global + City) */}
       <UnifiedChatPanel />
     </div>
   )
 }
+
 
