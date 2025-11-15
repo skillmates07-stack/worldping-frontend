@@ -2,15 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, X, TrendingUp, MapPin, Trophy, Globe, Calendar } from 'lucide-react'
+import { User, X, TrendingUp, MapPin, Trophy, Globe, Calendar, Award, Minimize2, Maximize2 } from 'lucide-react'
 import { useDeviceId } from '@/hooks/useDeviceId'
 import { useStreak } from '@/hooks/useStreak'
 import { supabase } from '@/lib/supabase/client'
-import Badge from '@/components/ui/Badge'
 import { ACHIEVEMENT_BADGES } from '@/lib/constants'
 
 export default function ProfilePanel() {
   const [isOpen, setIsOpen] = useState(false)
+  const [isMinimized, setIsMinimized] = useState(false)
   const [stats, setStats] = useState({
     totalMessages: 0,
     totalUpvotes: 0,
@@ -67,151 +67,139 @@ export default function ProfilePanel() {
 
   return (
     <>
-      {!isOpen && (
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          onClick={() => setIsOpen(true)}
-          className="fixed top-24 left-4 z-40 bg-gradient-to-r from-blue-600 to-cyan-600 text-white p-3 rounded-full shadow-lg hover:shadow-blue-500/50 transition-all"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-        >
-          <User className="w-6 h-6" />
-        </motion.button>
-      )}
+      {/* Profile Button - COMPACT */}
+      <AnimatePresence>
+        {!isOpen && (
+          <motion.button
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            onClick={() => setIsOpen(true)}
+            className="fixed top-24 left-4 z-[40] bg-gradient-to-r from-blue-600 to-cyan-600 text-white p-3 rounded-full shadow-xl hover:shadow-blue-500/50 transition-all side-panel"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <User className="w-5 h-5" />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
+      {/* Profile Panel - PROFESSIONAL */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ x: -400, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
+            animate={{ 
+              x: 0, 
+              opacity: 1,
+              width: isMinimized ? '60px' : '320px'
+            }}
             exit={{ x: -400, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed left-0 top-0 h-full w-full sm:w-96 bg-gray-900 border-r border-gray-800 shadow-2xl z-50 overflow-y-auto"
+            className="fixed left-0 top-0 h-full bg-gray-900 border-r-2 border-blue-600 shadow-2xl z-[55] overflow-hidden flex flex-col profile-panel"
           >
-            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-cyan-600 p-4 flex items-center justify-between z-10">
-              <div>
-                <h3 className="font-bold text-white text-lg flex items-center gap-2">
-                  <User className="w-5 h-5" />
-                  Your Profile
-                </h3>
-                <p className="text-white/80 text-xs mt-1">Anonymous Explorer</p>
-              </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-white" />
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            ) : (
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                    <div className="flex items-center gap-2 mb-2">
-                      <MapPin className="w-5 h-5 text-blue-400" />
-                      <span className="text-gray-400 text-sm">Messages</span>
-                    </div>
-                    <p className="text-3xl font-bold text-white">{stats.totalMessages}</p>
-                  </div>
-
-                  <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                    <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp className="w-5 h-5 text-green-400" />
-                      <span className="text-gray-400 text-sm">Upvotes</span>
-                    </div>
-                    <p className="text-3xl font-bold text-green-400">{stats.totalUpvotes}</p>
-                  </div>
-
-                  <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Trophy className="w-5 h-5 text-yellow-400" />
-                      <span className="text-gray-400 text-sm">World Rank</span>
-                    </div>
-                    <p className="text-3xl font-bold text-yellow-400">#{stats.rank}</p>
-                  </div>
-
-                  <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Globe className="w-5 h-5 text-purple-400" />
-                      <span className="text-gray-400 text-sm">Countries</span>
-                    </div>
-                    <p className="text-3xl font-bold text-purple-400">{streak.countriesVisited.length}</p>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-bold text-white">🔥 Current Streak</h4>
-                    <Badge variant="warning" className="text-lg">
-                      {streak.currentStreak} days
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Longest Streak</span>
-                    <span className="text-white font-semibold">{streak.longestStreak} days</span>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-white mb-3 flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-yellow-400" />
-                    Achievements ({earnedAchievements.length}/{Object.keys(ACHIEVEMENT_BADGES).length})
-                  </h4>
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                    {Object.entries(ACHIEVEMENT_BADGES).map(([key, badge]) => {
-                      const isEarned = earnedAchievements.some(([k]) => k === key)
-                      
-                      return (
-                        <motion.div
-                          key={key}
-                          whileHover={{ scale: isEarned ? 1.05 : 1 }}
-                          className={`p-3 rounded-xl border-2 transition-all ${
-                            isEarned
-                              ? `bg-gradient-to-br ${badge.color} border-transparent shadow-lg`
-                              : 'bg-gray-800 border-gray-700 opacity-50'
-                          }`}
-                        >
-                          <div className="text-3xl mb-1">{badge.icon}</div>
-                          <p className="text-sm font-bold text-white">{badge.name}</p>
-                          <p className="text-xs text-gray-400 mt-1">{badge.description}</p>
-                        </motion.div>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-white mb-3 flex items-center gap-2">
-                    <Globe className="w-5 h-5 text-blue-400" />
-                    Countries Visited
-                  </h4>
-                  
-                  {streak.countriesVisited.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {streak.countriesVisited.map((country, i) => (
-                        <Badge key={i} variant="info" className="text-sm">
-                          {country}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 text-sm">Drop messages in different countries to track your journey!</p>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  {!isMinimized && (
+                    <>
+                      <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        Your Profile
+                      </h3>
+                      <p className="text-white/80 text-xs">Anonymous Explorer</p>
+                    </>
                   )}
                 </div>
-
-                <div className="pt-4 border-t border-gray-800">
-                  <div className="flex items-center gap-2 text-gray-500 text-sm">
-                    <Calendar className="w-4 h-4" />
-                    <span>Member since today</span>
-                  </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setIsMinimized(!isMinimized)}
+                    className="p-1.5 hover:bg-white/20 rounded-lg"
+                  >
+                    {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
+                  </button>
+                  <button onClick={() => setIsOpen(false)} className="p-1.5 hover:bg-white/20 rounded-lg">
+                    <X className="w-4 h-4 text-white" />
+                  </button>
                 </div>
+              </div>
+            </div>
+
+            {!isMinimized && (
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {loading ? (
+                  <div className="flex items-center justify-center h-32">
+                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Stats Grid - COMPACT */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+                        <MapPin className="w-4 h-4 text-blue-400 mb-1" />
+                        <p className="text-2xl font-bold text-white">{stats.totalMessages}</p>
+                        <p className="text-gray-400 text-xs">Messages</p>
+                      </div>
+
+                      <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+                        <TrendingUp className="w-4 h-4 text-green-400 mb-1" />
+                        <p className="text-2xl font-bold text-green-400">{stats.totalUpvotes}</p>
+                        <p className="text-gray-400 text-xs">Upvotes</p>
+                      </div>
+
+                      <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+                        <Trophy className="w-4 h-4 text-yellow-400 mb-1" />
+                        <p className="text-2xl font-bold text-yellow-400">#{stats.rank}</p>
+                        <p className="text-gray-400 text-xs">Rank</p>
+                      </div>
+
+                      <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+                        <Globe className="w-4 h-4 text-purple-400 mb-1" />
+                        <p className="text-2xl font-bold text-purple-400">{streak.countriesVisited.length}</p>
+                        <p className="text-gray-400 text-xs">Countries</p>
+                      </div>
+                    </div>
+
+                    {/* Streak - COMPACT */}
+                    <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white text-xs font-bold">🔥 {streak.currentStreak} Day Streak</p>
+                          <p className="text-gray-400 text-xs">Longest: {streak.longestStreak}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Achievements - COMPACT */}
+                    <div>
+                      <h4 className="text-white text-xs font-bold mb-2 flex items-center gap-1">
+                        <Award className="w-4 h-4" />
+                        Achievements ({earnedAchievements.length}/{Object.keys(ACHIEVEMENT_BADGES).length})
+                      </h4>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        {Object.entries(ACHIEVEMENT_BADGES).slice(0, 4).map(([key, badge]) => {
+                          const isEarned = earnedAchievements.some(([k]) => k === key)
+                          
+                          return (
+                            <div
+                              key={key}
+                              className={`p-2 rounded-lg border transition-all ${
+                                isEarned
+                                  ? `bg-gradient-to-br ${badge.color} border-transparent`
+                                  : 'bg-gray-800 border-gray-700 opacity-50'
+                              }`}
+                            >
+                              <div className="text-2xl mb-1">{badge.icon}</div>
+                              <p className="text-white text-xs font-bold">{badge.name}</p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </motion.div>
