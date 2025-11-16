@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Smile, Send } from 'lucide-react'
 import { useClanMessages } from '@/hooks/useClanMessages' // Connects to your clan message sending
-import EmojiPicker from '@/components/ui/EmojiPicker' // If you want emoji picker
 
 export default function ClanMessageForm({ clanId }) {
   const { sendMessage } = useClanMessages(clanId)
