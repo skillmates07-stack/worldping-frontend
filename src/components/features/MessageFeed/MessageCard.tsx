@@ -2,7 +2,10 @@
 
 import { useState, useCallback, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ThumbsUp, ThumbsDown, MapPin, Clock, Trash2, MoreVertical, MessageCircle, Share2 } from 'lucide-react'
+import {
+  ThumbsUp, ThumbsDown, MapPin, Clock, Trash2, MoreVertical,
+  MessageCircle, Share2, UserCircle2
+} from 'lucide-react'
 import { supabase, type Message } from '@/lib/supabase/client'
 import { useDeviceId } from '@/hooks/useDeviceId'
 import { useMessageActions } from '@/hooks/useMessageActions'
@@ -20,7 +23,7 @@ function MessageCard({ message }: MessageCardProps) {
   const deviceId = useDeviceId()
   const { deleteMessage } = useMessageActions()
   const toast = useToast()
-  
+
   const [voting, setVoting] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [showReplyModal, setShowReplyModal] = useState(false)
@@ -36,9 +39,9 @@ function MessageCard({ message }: MessageCardProps) {
 
   const handleVote = useCallback(async (voteType: 'up' | 'down') => {
     if (!deviceId || voting || isOwnMessage) return
-    
+
     setVoting(true)
-    
+
     try {
       const { error } = await supabase
         .from('votes')
@@ -65,7 +68,7 @@ function MessageCard({ message }: MessageCardProps) {
         }))
         setUserVote(voteType)
       }
-      
+
       toast('Vote recorded!', 'success')
     } catch (err) {
       console.error('Vote error:', err)
@@ -91,44 +94,55 @@ function MessageCard({ message }: MessageCardProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, x: -100 }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.2 }}
         className={cn(
           "glass-dark rounded-xl p-4 hover:border-gray-700 transition-all duration-200 group relative",
-          isOwnMessage && "border-green-500/30"
+          isOwnMessage && "border-green-500/30",
+          "sm:flex-col flex-row"
         )}
+        aria-label={`Message from ${isOwnMessage ? "You" : "User " + message.device_id.slice(-4)}`}
+        tabIndex={0}
       >
         <div className="flex items-start gap-3 mb-3">
-          {message.emoji && (
-            <div className="text-3xl flex-shrink-0 mt-0.5" aria-label={`Emoji: ${message.emoji}`}>
-              {message.emoji}
-            </div>
-          )}
-          
+          {/* Avatar or emoji as accent for profile, fallback to Lucide user icon */}
+          <div className="w-11 h-11 bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center rounded-full overflow-hidden shadow-md mr-2">
+            {message.avatarUrl
+              ? <img src={message.avatarUrl} alt="User avatar" className="w-full h-full object-cover" />
+              : message.emoji
+              ? <span className="text-3xl">{message.emoji}</span>
+              : <UserCircle2 className="text-white w-7 h-7" />
+            }
+          </div>
+
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm leading-relaxed break-words">
-              {message.content}
-            </p>
-            
-            {isOwnMessage && (
-              <div className="flex items-center gap-2 mt-2">
-                <Badge variant="success" className="text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-slate-700 truncate">User {message.device_id.slice(-4)}</span>
+              {isOwnMessage && (
+                <Badge variant="success" className="text-xs ml-2 whitespace-nowrap">
                   Your Message
                 </Badge>
+              )}
+              <span className="ml-auto text-xs text-gray-500">{formatTimeAgo(message.created_at)}</span>
+            </div>
+            <p className="my-1 text-white text-sm leading-relaxed break-words">
+              {message.content}
+            </p>
+            {message.attachments && (
+              <div className="mt-1 flex gap-2">
+                {/* Render thumbnails, file links, etc. */}
+                {/* {message.attachments.map((a,i) => ...)} */}
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className={cn(
-              "flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold",
-              score > 5 ? "bg-green-500/20 text-green-400" :
-              score > 0 ? "bg-blue-500/20 text-blue-400" :
-              score < 0 ? "bg-red-500/20 text-red-400" :
-              "bg-gray-700 text-gray-400"
-            )}>
+          <div className="flex flex-col items-end gap-2 self-start">
+            <div className="flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold"
+              style={{
+                backgroundColor: score > 5 ? "#16a34a22" : score > 0 ? "#3b82f622" : score < 0 ? "#ef444422" : "#1e293b",
+                color: score > 5 ? "#22c55e" : score > 0 ? "#0ea5e9" : score < 0 ? "#ef4444" : "#64748b"
+              }}>
               {score > 0 ? '+' : ''}{score}
             </div>
-
             {isOwnMessage && (
               <div className="relative">
                 <button
@@ -162,12 +176,14 @@ function MessageCard({ message }: MessageCardProps) {
           </div>
         </div>
 
-        <footer className="flex items-center justify-between pt-3 border-t border-gray-800">
-          <div className="flex items-center gap-3 text-xs text-gray-500">
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3 h-3" aria-hidden="true" />
-              {message.latitude.toFixed(2)}°, {message.longitude.toFixed(2)}°
-            </span>
+        <footer className="flex flex-wrap items-center justify-between pt-3 border-t border-gray-800">
+          <div className="flex items-center gap-3 text-xs text-gray-500 overflow-auto">
+            {message.latitude && message.longitude && (
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3 h-3" aria-hidden="true" />
+                {message.latitude.toFixed(2)}°, {message.longitude.toFixed(2)}°
+              </span>
+            )}
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" aria-hidden="true" />
               {formatTimeAgo(message.created_at)}
@@ -193,7 +209,6 @@ function MessageCard({ message }: MessageCardProps) {
                   <ThumbsUp className="w-4 h-4" />
                   <span>{localVotes.upvotes}</span>
                 </motion.button>
-                
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
@@ -213,7 +228,6 @@ function MessageCard({ message }: MessageCardProps) {
               </>
             )}
 
-            {/* Reply Button */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -224,8 +238,6 @@ function MessageCard({ message }: MessageCardProps) {
               <MessageCircle className="w-4 h-4" />
               <span>{message.reply_count || 0}</span>
             </motion.button>
-
-            {/* Share Button */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -239,14 +251,11 @@ function MessageCard({ message }: MessageCardProps) {
         </footer>
       </motion.article>
 
-      {/* Reply Modal */}
-      <ReplyModal 
+      <ReplyModal
         message={message}
         isOpen={showReplyModal}
         onClose={() => setShowReplyModal(false)}
       />
-
-      {/* Share Modal */}
       <ShareModal
         isOpen={shareOpen}
         onClose={() => setShareOpen(false)}
