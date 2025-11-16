@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Loader2, Upload, Image, Video, Zap } from 'lucide-react'
+import { X, Loader2, Upload, Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
@@ -50,7 +50,6 @@ export default function CreateEventModal({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    // 15MB limit
     if (file.size > 15 * 1024 * 1024) {
       toast('File must be under 15MB', 'error')
       return
@@ -113,14 +112,14 @@ export default function CreateEventModal({
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[70] bg-black/70 flex items-center justify-center"
-        style={{ backdropFilter: 'blur(4px)' }}
+        className="modal-overlay fixed inset-0 flex items-center justify-center p-4"
         onClick={onClose}
+        style={{ backdropFilter: 'blur(4px)' }}
       >
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-          className="bg-gray-900 border-2 border-orange-600 rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 relative flex flex-col gap-5"
-          onClick={e => e.stopPropagation()}
+          className="modal-content bg-gray-900 border-2 border-orange-600 rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 relative flex flex-col gap-5"
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-2">
             <h2 className="font-bold text-white text-lg flex items-center gap-2">
@@ -131,7 +130,6 @@ export default function CreateEventModal({
             </button>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Title */}
             <input
               className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"
               placeholder="Event title (e.g. Chill party, Study marathon...)"
@@ -141,7 +139,6 @@ export default function CreateEventModal({
               disabled={uploading}
               required
             />
-            {/* Category */}
             <div>
               <label className="text-xs text-gray-300 mb-2 block font-bold">Category</label>
               <div className="flex flex-wrap gap-2">
@@ -161,7 +158,6 @@ export default function CreateEventModal({
                   </button>
                 ))}
                 </div>
-                {/* Custom category input */}
                 {eventType === 'other' && (
                   <input
                     type="text"
@@ -174,7 +170,6 @@ export default function CreateEventModal({
                   />
                 )}
             </div>
-            {/* Description */}
             <textarea
               className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none resize-none"
               rows={2}
@@ -183,8 +178,7 @@ export default function CreateEventModal({
               value={description}
               onChange={e => setDescription(e.target.value)}
               disabled={uploading}
-            ></textarea>
-            {/* Media upload */}
+            />
             {allowMedia && (
               <div>
                 <label className="text-xs font-bold text-gray-300 mb-2 block">Optional: Upload photo or video</label>
@@ -233,8 +227,6 @@ export default function CreateEventModal({
                 <p className="text-xs text-gray-500 mt-1">Max size 15MB</p>
               </div>
             )}
-
-            {/* Submit */}
             <Button
               type="submit"
               disabled={uploading || !title.trim()}
