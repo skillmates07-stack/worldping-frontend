@@ -14,6 +14,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
+// Define Attachment interface for attachments field
+export interface Attachment {
+  url: string
+  filename?: string
+  contentType?: string
+  // add more fields as needed
+}
+
 // Complete Database Types
 export interface Message {
   id: string
@@ -30,11 +38,10 @@ export interface Message {
   country?: string
   is_time_capsule?: boolean
   unlock_at?: string
-  reply_count?: number  // ✅ ADD THIS LINE
-  avatarUrl?: string 
+  reply_count?: number
+  avatarUrl?: string         // added for user avatar images
+  attachments?: Attachment[] // added for message attachments
 }
-
-
 
 export interface Vote {
   id: string
@@ -53,6 +60,3 @@ export interface UserStreak {
   total_messages: number
   total_upvotes: number
 }
-
-
-
