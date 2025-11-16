@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Map, { NavigationControl, GeolocateControl, Marker } from 'react-map-gl/maplibre'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import MessageModal from '@/components/features/DropMessage/MessageModal'
 import TeleportButton from '@/components/features/Teleport/TeleportButton'
@@ -20,12 +20,12 @@ import { supabase } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import { Plus, MapPinned, Camera, Zap } from 'lucide-react'
 
-// Define strict EventType union
+// Define EventType union and normalize helper
 type EventType = 'concert' | 'protest' | 'celebration' | 'emergency' | 'other'
 
 interface LiveEvent {
   id: string
-  type: EventType  // Narrowed type
+  type: EventType
   title: string
   description: string
   latitude: number
@@ -34,13 +34,9 @@ interface LiveEvent {
   created_at: string
 }
 
-// Helper to normalize event type from your API
 function normalizeEventType(type: string): EventType {
   const knownTypes: EventType[] = ['concert', 'protest', 'celebration', 'emergency', 'other']
-  if (knownTypes.includes(type as EventType)) {
-    return type as EventType
-  }
-  return 'other'
+  return knownTypes.includes(type as EventType) ? (type as EventType) : 'other'
 }
 
 export default function MapContainer() {
@@ -54,16 +50,14 @@ export default function MapContainer() {
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null)
   const [locationError, setLocationError] = useState<string | null>(null)
 
-  const [modalState, setModalState] = useState<{ isOpen: boolean; lat: number; lng: number }>({ isOpen: false, lat: 0, lng: 0 })
-  const [eventModalState, setEventModalState] = useState<{ isOpen: boolean; lat: number; lng: number }>({ isOpen: false, lat: 0, lng: 0 })
-
+  const [modalState, setModalState] = useState<{isOpen:boolean, lat:number, lng:number}>({ isOpen: false, lat: 0, lng: 0 })
+  const [eventModalState, setEventModalState] = useState<{isOpen:boolean, lat:number, lng:number}>({ isOpen: false, lat: 0, lng: 0 })
   const [snapModalOpen, setSnapModalOpen] = useState(false)
   const [selectedSnap, setSelectedSnap] = useState<any>(null)
   const [snaps, setSnaps] = useState<any[]>([])
   const [selectedEvent, setSelectedEvent] = useState<LiveEvent | null>(null)
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([])
-
-  const { messages, refetch, isMessageUnlocked, userMessageCount } = useMessages()
+  const { messages, refetch, isMessageUnlocked } = useMessages()
   const deviceId = useDeviceId()
 
   useEffect(() => {
@@ -73,13 +67,13 @@ export default function MapContainer() {
   useEffect(() => {
     fetchLiveEvents()
     const unsubscribeLiveEvents = subscribeToLiveEvents()
-    return unsubscribeLiveEvents
+    return () => { unsubscribeLiveEvents() }
   }, [])
 
   useEffect(() => {
     fetchSnaps()
     const unsubscribeSnaps = subscribeToSnaps()
-    return unsubscribeSnaps
+    return () => { unsubscribeSnaps() }
   }, [])
 
   async function getUserLocation() {
@@ -89,13 +83,13 @@ export default function MapContainer() {
       return
     }
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      position => {
         const { latitude, longitude } = position.coords
         setUserLocation({ lat: latitude, lng: longitude })
         setViewState({ longitude, latitude, zoom: 12 })
         toast.success('📍 Location detected!', { duration: 2000 })
       },
-      (error) => {
+      error => {
         console.error('Location error:', error)
         setLocationError(error.message)
         toast.error('📍 Please enable location access')
@@ -114,9 +108,9 @@ export default function MapContainer() {
 
       if (error) throw error
 
-      setLiveEvents(data?.map(evt => ({
-        ...evt,
-        type: normalizeEventType(evt.type) // normalize type here
+      setLiveEvents(data?.map(event => ({
+        ...event,
+        type: normalizeEventType(event.type)
       })) || [])
     } catch (error) {
       console.error('Error fetching live events:', error)
@@ -126,7 +120,7 @@ export default function MapContainer() {
   function subscribeToLiveEvents() {
     const channel = supabase
       .channel('live-events')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'live_events' }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'live_events' }, payload => {
         const normalizedEvent = { ...payload.new as LiveEvent, type: normalizeEventType(payload.new.type) }
         setLiveEvents(prev => [normalizedEvent, ...prev])
       })
@@ -152,7 +146,7 @@ export default function MapContainer() {
   function subscribeToSnaps() {
     const channel = supabase
       .channel('snaps-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'snaps' }, (payload) =>
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'snaps' }, payload =>
         setSnaps(prev => [payload.new as any, ...prev])
       )
       .subscribe()
@@ -165,7 +159,7 @@ export default function MapContainer() {
     const isOwnMessage = message.device_id === deviceId
 
     if (isUnlocked || isOwnMessage) {
-      toast((t) => (
+      toast(t => (
         <div className="flex flex-col gap-2 max-w-sm">
           <div className="flex items-center gap-2">
             <span className="text-2xl">{message.emoji || '💬'}</span>
@@ -175,7 +169,9 @@ export default function MapContainer() {
             <span>👍 {message.upvotes}</span>
             <span>💬 {message.reply_count || 0} replies</span>
           </div>
-          {isOwnMessage && <span className="text-xs text-green-400">✓ Your message</span>}
+          {isOwnMessage && (
+            <span className="text-xs text-green-400">✓ Your message</span>
+          )}
         </div>
       ), { duration: 5000 })
     }
@@ -208,7 +204,7 @@ export default function MapContainer() {
 
   const handleEventMarkerClick = (event: LiveEvent) => {
     setSelectedEvent(event)
-    toast((t) => (
+    toast(t => (
       <div className="flex flex-col gap-2 max-w-sm">
         <div className="flex items-center gap-2">
           <span className="text-2xl">
@@ -252,8 +248,9 @@ export default function MapContainer() {
           trackUserLocation
           positionOptions={{ enableHighAccuracy: true }}
           showUserLocation={true}
-          onGeolocate={(e) => setUserLocation({ lat: e.coords.latitude, lng: e.coords.longitude })}
+          onGeolocate={e => setUserLocation({ lat: e.coords.latitude, lng: e.coords.longitude })}
         />
+
         {userLocation && (
           <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="center">
             <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }} className="relative">
@@ -267,26 +264,33 @@ export default function MapContainer() {
             </motion.div>
           </Marker>
         )}
-        {messages.map((message) => {
+
+        {messages.map(message => {
           const isUnlocked = isMessageUnlocked(message.id)
           const isOwnMessage = message.device_id === deviceId
+
           return (
             <Marker key={message.id} longitude={message.longitude} latitude={message.latitude} anchor="bottom">
               {isUnlocked || isOwnMessage ? (
                 <motion.div
-                  initial={{ scale: 0 }} animate={{ scale: 1 }}
-                  whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.95 }}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  whileHover={{ scale: 1.15 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleMessageClick(message)}
                   className="relative cursor-pointer group"
                 >
-                  <div className={`w-10 h-10 ${isOwnMessage
-                      ? 'bg-gradient-to-br from-green-500 to-emerald-600'
-                      : 'bg-gradient-to-br from-blue-500 to-blue-600'
-                    } rounded-full border-2 border-white shadow-lg flex items-center justify-center text-xl transition-all duration-200`}>
+                  <div
+                    className={`w-10 h-10 ${
+                      isOwnMessage
+                        ? 'bg-gradient-to-br from-green-500 to-emerald-600'
+                        : 'bg-gradient-to-br from-blue-500 to-blue-600'
+                    } rounded-full border-2 border-white shadow-lg flex items-center justify-center text-xl transition-all duration-200`}
+                  >
                     {message.emoji || '💬'}
                   </div>
                   <div className="absolute bottom-[-6px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[6px] border-t-white"></div>
-                  {(message.upvotes - message.downvotes) > 0 && (
+                  {message.upvotes - message.downvotes > 0 && (
                     <div className="absolute -top-2 -right-2 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full shadow-md min-w-[20px] text-center">
                       {message.upvotes - message.downvotes}
                     </div>
@@ -303,12 +307,14 @@ export default function MapContainer() {
             </Marker>
           )
         })}
-        {liveEvents.map((event) => (
+
+        {liveEvents.map(event => (
           <Marker key={event.id} longitude={event.longitude} latitude={event.latitude} anchor="bottom">
             <LiveEventMarker event={event} onClick={() => handleEventMarkerClick(event)} />
           </Marker>
         ))}
-        {snaps.map((snap) => (
+
+        {snaps.map(snap => (
           <Marker key={snap.id} longitude={snap.longitude} latitude={snap.latitude} anchor="bottom">
             <SnapMarker onClick={() => setSelectedSnap(snap)} />
           </Marker>
@@ -323,7 +329,8 @@ export default function MapContainer() {
       {/* Center: Post Message/Snap Buttons */}
       <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-30 flex items-center gap-4">
         <motion.button
-          whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
           onClick={handlePostAtMyLocation}
           className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 font-bold text-lg hover:shadow-blue-500/50 transition-all"
         >
@@ -331,7 +338,8 @@ export default function MapContainer() {
           Post Here
         </motion.button>
         <motion.button
-          whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
           onClick={handlePostSnapAtMyLocation}
           className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all"
         >
@@ -343,13 +351,13 @@ export default function MapContainer() {
       <motion.button
         whileHover={{ scale: 1.07 }}
         whileTap={{ scale: 0.93 }}
-        onClick={() => {
+        onClick={() =>
           setEventModalState({
             isOpen: true,
             lat: userLocation?.lat || viewState.latitude,
             lng: userLocation?.lng || viewState.longitude
           })
-        }}
+        }
         className="fixed bottom-24 right-8 z-[31] bg-gradient-to-r from-orange-500 to-red-500 text-white p-4 rounded-full shadow-2xl hover:shadow-orange-500/50 flex items-center gap-2"
         aria-label="Create New Event"
       >
@@ -358,10 +366,11 @@ export default function MapContainer() {
 
       {/* Right: MoodHeatmap */}
       <MoodHeatmap />
+
       {/* Top Right: DailyChallenges */}
       <DailyChallenges />
 
-      {/* Modals and popups */}
+      {/* Modals */}
       <MessageModal
         isOpen={modalState.isOpen}
         onClose={handleCloseModal}
@@ -378,7 +387,7 @@ export default function MapContainer() {
           fetchLiveEvents()
           setEventModalState(prev => ({ ...prev, isOpen: false }))
         }}
-        allowMedia
+        allowMedia={true}
         categories={[
           { id: 'party', label: 'Party 🎉' },
           { id: 'study', label: 'Study Session 📚' },
@@ -389,11 +398,7 @@ export default function MapContainer() {
           { id: 'other', label: 'Other …' }
         ]}
       />
-      <SnapViewerModal
-        snap={selectedSnap}
-        isOpen={!!selectedSnap}
-        onClose={() => setSelectedSnap(null)}
-      />
+      <SnapViewerModal snap={selectedSnap} isOpen={!!selectedSnap} onClose={() => setSelectedSnap(null)} />
       <CreateSnapModal
         isOpen={snapModalOpen}
         onClose={() => setSnapModalOpen(false)}
@@ -410,9 +415,7 @@ export default function MapContainer() {
           className="absolute top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-2 z-30"
         >
           <MapPinned className="w-5 h-5 animate-pulse" />
-          <p className="text-sm font-medium">
-            Enable location to post messages!
-          </p>
+          <p className="text-sm font-medium">Enable location to post messages!</p>
         </motion.div>
       )}
     </main>
