@@ -65,16 +65,13 @@ export default function MessageModal({
       toast.error('Message too long (max 500 characters)')
       return
     }
-
     if (!deviceId) {
       toast.error('Please wait a moment...')
       return
     }
 
     setIsSubmitting(true)
-
     try {
-      // Calculate unlock time for time capsules (24 hours from now)
       const unlockAt = isTimeCapsule 
         ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
         : null
@@ -92,7 +89,6 @@ export default function MessageModal({
           is_time_capsule: isTimeCapsule,
           unlock_at: unlockAt
         })
-
       if (insertError) throw insertError
 
       // Unlock random messages as reward (only for instant messages)
@@ -103,7 +99,6 @@ export default function MessageModal({
           setShowUnlock(true)
         }
       }
-
       // Update streak
       const country = getCountryFromCoordinates(latitude, longitude)
       await updateStreakAfterPost(country)
@@ -140,7 +135,7 @@ export default function MessageModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            className="modal-overlay fixed inset-0 flex items-center justify-center p-4"
             onClick={onClose}
           >
             <motion.div
@@ -148,7 +143,7 @@ export default function MessageModal({
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+              className="modal-content bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -164,22 +159,19 @@ export default function MessageModal({
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                
                 <div className="flex items-center gap-2 text-sm text-gray-400 mt-2">
                   <MapPin className="w-4 h-4" />
                   <span>{latitude.toFixed(4)}°, {longitude.toFixed(4)}°</span>
                 </div>
               </div>
-
               {/* Form */}
               <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                {/* Time Capsule Toggle */}
+                {/* ... rest of your form ... */}
+                {/* (same as before, not changed - keep your amazing UI) */}
                 <TimeCapsuleToggle 
                   isTimeCapsule={isTimeCapsule}
                   onToggle={setIsTimeCapsule}
                 />
-
-                {/* Mood Selector */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     What's your mood? 🎭
@@ -189,8 +181,6 @@ export default function MessageModal({
                     onSelectMood={setSelectedMood} 
                   />
                 </div>
-
-                {/* Emoji Picker */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Add an Emoji (optional)
@@ -204,7 +194,6 @@ export default function MessageModal({
                       <span className="text-2xl">{selectedEmoji || '😊'}</span>
                       <Smile className="w-5 h-5 text-gray-400" />
                     </button>
-
                     <AnimatePresence>
                       {showEmojiPicker && (
                         <motion.div
@@ -233,7 +222,6 @@ export default function MessageModal({
                     </AnimatePresence>
                   </div>
                 </div>
-
                 {/* Message Input */}
                 <div>
                   <label htmlFor="message" className="block text-sm font-medium text-gray-300 mb-2">
@@ -262,8 +250,6 @@ export default function MessageModal({
                     </span>
                   </div>
                 </div>
-
-                {/* Submit Button */}
                 <Button
                   type="submit"
                   disabled={isSubmitting || !content.trim()}
@@ -283,8 +269,6 @@ export default function MessageModal({
                     </>
                   )}
                 </Button>
-
-                {/* Info Text */}
                 {isTimeCapsule && (
                   <motion.p 
                     initial={{ opacity: 0 }}
@@ -299,7 +283,6 @@ export default function MessageModal({
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Unlock Celebration */}
       {showUnlock && (
         <UnlockCelebration 
