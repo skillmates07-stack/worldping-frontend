@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Camera, Send, Loader2, ImagePlus } from 'lucide-react'
+import { X, Camera, Send, Loader2, ImagePlus, Upload } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useDeviceId } from '@/hooks/useDeviceId'
 import { useToast } from '@/components/ui/Toast'
@@ -25,7 +25,10 @@ export default function CreateSnapModal({
 }: CreateSnapModalProps) {
   const toast = useToast()
   const deviceId = useDeviceId()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Separate refs for camera and upload
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const uploadInputRef = useRef<HTMLInputElement>(null)
   
   const [caption, setCaption] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -61,9 +64,8 @@ export default function CreateSnapModal({
   const handleRemoveImage = useCallback(() => {
     setImageFile(null)
     setImagePreview(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
+    if (cameraInputRef.current) cameraInputRef.current.value = ''
+    if (uploadInputRef.current) uploadInputRef.current.value = ''
   }, [])
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -157,7 +159,7 @@ export default function CreateSnapModal({
         >
           {/* Header */}
           <header className="bg-gradient-to-r from-purple-600 to-pink-600 p-3 flex items-center justify-between">
-            <h2 className="font-bold text-white flex items-center gap-2">
+            <h2 className="font-bold text-white flex items-center gap-2 text-base">
               <Camera className="w-5 h-5" />
               Post Snap
             </h2>
@@ -171,19 +173,31 @@ export default function CreateSnapModal({
           </header>
 
           <form onSubmit={handleSubmit} className="p-4 space-y-3">
-            {/* Image Upload */}
+            {/* Hidden File Inputs */}
             <input
-              ref={fileInputRef}
+              ref={cameraInputRef}
               type="file"
               accept="image/*"
               capture="environment"
               onChange={handleFileSelect}
               className="hidden"
-              aria-label="Upload photo"
+              id="camera-input"
+              aria-label="Take photo with camera"
             />
 
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+              id="upload-input"
+              aria-label="Upload photo from device"
+            />
+
+            {/* Image Preview or Upload Options */}
             {imagePreview ? (
-              <div className="relative h-48 rounded-xl overflow-hidden bg-black">
+              <div className="relative h-52 rounded-xl overflow-hidden bg-black">
                 <img 
                   src={imagePreview} 
                   alt="Snap preview" 
@@ -192,23 +206,49 @@ export default function CreateSnapModal({
                 <button
                   type="button"
                   onClick={handleRemoveImage}
-                  className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 rounded-full transition-colors"
+                  className="absolute top-2 right-2 p-2 bg-red-500 hover:bg-red-600 rounded-full transition-colors shadow-lg"
                   aria-label="Remove photo"
                 >
                   <X className="w-4 h-4 text-white" />
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full h-48 border-2 border-dashed border-gray-700 hover:border-purple-600 rounded-xl flex flex-col items-center justify-center gap-2 transition-all hover:bg-purple-600/5"
-              >
-                <ImagePlus className="w-12 h-12 text-gray-600" />
-                <p className="text-white text-sm font-medium">Take or Upload Photo</p>
-                <p className="text-gray-500 text-xs">JPG, PNG • Max 5MB</p>
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Camera Button */}
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="h-36 border-2 border-dashed border-purple-600/50 hover:border-purple-600 bg-gradient-to-br from-purple-600/10 to-purple-800/10 hover:from-purple-600/20 hover:to-purple-800/20 rounded-xl flex flex-col items-center justify-center gap-2 transition-all"
+                >
+                  <div className="p-3 bg-purple-600 rounded-full">
+                    <Camera className="w-6 h-6 text-white" />
+                  </div>
+                  <p className="text-white text-sm font-medium">Take Photo</p>
+                  <p className="text-gray-500 text-xs">Use Camera</p>
+                </motion.button>
+
+                {/* Upload Button */}
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => uploadInputRef.current?.click()}
+                  className="h-36 border-2 border-dashed border-pink-600/50 hover:border-pink-600 bg-gradient-to-br from-pink-600/10 to-pink-800/10 hover:from-pink-600/20 hover:to-pink-800/20 rounded-xl flex flex-col items-center justify-center gap-2 transition-all"
+                >
+                  <div className="p-3 bg-pink-600 rounded-full">
+                    <Upload className="w-6 h-6 text-white" />
+                  </div>
+                  <p className="text-white text-sm font-medium">Upload</p>
+                  <p className="text-gray-500 text-xs">From Gallery</p>
+                </motion.button>
+              </div>
             )}
+
+            <p className="text-center text-gray-500 text-xs">
+              JPG, PNG • Max 5MB
+            </p>
 
             {/* Caption */}
             <div>
@@ -232,7 +272,7 @@ export default function CreateSnapModal({
               type="submit"
               disabled={uploading || (!imageFile && !caption.trim())}
               isLoading={uploading}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500"
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {uploading ? (
                 <>
@@ -247,7 +287,7 @@ export default function CreateSnapModal({
               )}
             </Button>
 
-            <p className="text-xs text-center text-gray-500">
+            <p className="text-xs text-center text-gray-500 flex items-center justify-center gap-1">
               ⏰ Your snap will be visible for 24 hours
             </p>
           </form>
