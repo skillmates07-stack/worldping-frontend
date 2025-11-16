@@ -1,25 +1,34 @@
 import { useState } from "react";
 import { Shield, Palette } from "lucide-react";
 
-export default function ClanCreateModal({ open, onClose, onCreated }) {
+interface ClanCreateModalProps {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+}
+
+export default function ClanCreateModal({
+  open,
+  onClose,
+  onCreated,
+}: ClanCreateModalProps) {
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [emoji, setEmoji] = useState("⚡");
   const [color, setColor] = useState("from-blue-500 to-purple-500");
-  const [privacy, setPrivacy] = useState("public");
+  const [privacy, setPrivacy] = useState<"public" | "private">("public");
   const [loading, setLoading] = useState(false);
 
-  async function handleCreate(e) {
+  async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-    // Call your API here: createClan({ name, desc, emoji, color, privacy });
-    // On success call: onCreated();
+    // Call your API to create clan; call onCreated() on success
     setLoading(false);
   }
 
   return open ? (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <form 
+      <form
         className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl space-y-4"
         onSubmit={handleCreate}
       >
@@ -46,7 +55,7 @@ export default function ClanCreateModal({ open, onClose, onCreated }) {
         <div className="flex items-center gap-3">
           <span className="text-2xl cursor-pointer">{emoji}</span>
           {/* You could add an emoji picker here */}
-          <select value={color} onChange={e=>setColor(e.target.value)} className="rounded p-1">
+          <select value={color} onChange={e => setColor(e.target.value)} className="rounded p-1">
             <option value="from-blue-500 to-purple-500">Blue→Purple</option>
             <option value="from-pink-500 to-yellow-400">Pink→Yellow</option>
             <option value="from-green-500 to-cyan-400">Green→Cyan</option>
@@ -81,7 +90,7 @@ export default function ClanCreateModal({ open, onClose, onCreated }) {
         >
           {loading ? "Creating..." : "Create Clan"}
         </button>
-        <button 
+        <button
           type="button"
           onClick={onClose}
           className="w-full py-2 mt-2 rounded-xl bg-gray-100"
