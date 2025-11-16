@@ -22,7 +22,6 @@ interface ChatMessage {
 export default function UnifiedChatPanel() {
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
-  // Default to "global" tab
   const [activeTab, setActiveTab] = useState<'global' | string>('global')
   const [globalMessages, setGlobalMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
@@ -32,12 +31,10 @@ export default function UnifiedChatPanel() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const deviceId = useDeviceId()
 
-  // CLANS
   const { clans } = useJoinedClans()
   const activeClanId = activeTab !== 'global' ? activeTab : null
   const { messages: clanMessages = [], loading: clanLoading } = useClanMessages(activeClanId || '')
   
-  // Decide which messages and loading state to show
   const messages = activeTab === 'global' ? globalMessages : clanMessages
   const chatLoading = activeTab === 'global' ? loading : clanLoading
 
@@ -97,7 +94,6 @@ export default function UnifiedChatPanel() {
   }
 
   async function updateOnlineCount() {
-    // Simulate online users (for demo). Replace for "live" presence!
     setOnlineCount(Math.floor(Math.random() * 500) + 100)
   }
 
@@ -136,7 +132,6 @@ export default function UnifiedChatPanel() {
 
   return (
     <>
-      {/* Floating Chat Button */}
       <AnimatePresence>
         {!isOpen && (
           <motion.button
@@ -156,7 +151,6 @@ export default function UnifiedChatPanel() {
         )}
       </AnimatePresence>
 
-      {/* Chat Modal UI */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -171,7 +165,6 @@ export default function UnifiedChatPanel() {
             className="fixed bottom-6 right-6 w-96 bg-gray-900 border-2 border-purple-600 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col"
             style={{ maxWidth: 'calc(100vw - 3rem)' }}
           >
-            {/* Header */}
             <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex-1">
@@ -205,10 +198,10 @@ export default function UnifiedChatPanel() {
               </div>
               
               {!isMinimized && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 overflow-x-auto">
                   <button
                     onClick={() => setActiveTab('global')}
-                    className={`flex-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                       activeTab === 'global'
                         ? 'bg-white text-purple-600'
                         : 'bg-white/20 text-white hover:bg-white/30'
@@ -221,7 +214,7 @@ export default function UnifiedChatPanel() {
                     <button
                       key={clan.id}
                       onClick={() => setActiveTab(clan.id)}
-                      className={`flex-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                         activeTab === clan.id
                           ? 'bg-white text-purple-600'
                           : 'bg-white/20 text-white hover:bg-white/30'
@@ -232,10 +225,9 @@ export default function UnifiedChatPanel() {
                       {clan.name}
                     </button>
                   ))}
-                  {/* Add/Join Clan Button could be added here */}
                   <button
-                    onClick={() => toast('Show discover/join modal!')}
-                    className="px-2 py-1 rounded-lg bg-blue-500 text-white hover:bg-blue-400 ml-2 flex items-center"
+                    onClick={() => toast('Show clan discovery modal')}
+                    className="flex-shrink-0 px-2 py-1 rounded-lg bg-blue-500 text-white hover:bg-blue-400 flex items-center"
                   >
                     <Plus className="w-5 h-5" />
                   </button>
@@ -243,7 +235,6 @@ export default function UnifiedChatPanel() {
               )}
             </div>
             
-            {/* Messages */}
             {!isMinimized && (
               <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-950">
                 {chatLoading ? (
@@ -291,7 +282,6 @@ export default function UnifiedChatPanel() {
               </div>
             )}
 
-            {/* Input */}
             {!isMinimized && (
               <form onSubmit={handleSend} className="p-2 border-t border-gray-800 bg-gray-900">
                 <div className="flex gap-2">
