@@ -1,12 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Music, Megaphone, PartyPopper, Zap, Send, Loader2 } from 'lucide-react'
+import { X, Loader2, Upload, Image, Video, Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
-import { useDeviceId } from '@/hooks/useDeviceId'
 import Button from '@/components/ui/Button'
-import toast from 'react-hot-toast'
+import { useToast } from '@/components/ui/Toast'
 
 interface CreateEventModalProps {
   isOpen: boolean
@@ -14,182 +13,252 @@ interface CreateEventModalProps {
   latitude: number
   longitude: number
   onSuccess?: () => void
+  allowMedia?: boolean
+  categories?: { id: string, label: string }[]
 }
 
-const eventTypes = [
-  { value: 'concert', label: 'Concert', icon: Music, emoji: '🎵', color: 'from-purple-500 to-pink-500' },
-  { value: 'protest', label: 'Protest', icon: Megaphone, emoji: '📢', color: 'from-red-500 to-orange-500' },
-  { value: 'celebration', label: 'Celebration', icon: PartyPopper, emoji: '🎉', color: 'from-yellow-500 to-orange-500' },
-  { value: 'emergency', label: 'Emergency', icon: Zap, emoji: '⚠️', color: 'from-red-600 to-red-500' },
-]
-
-export default function CreateEventModal({ isOpen, onClose, latitude, longitude, onSuccess }: CreateEventModalProps) {
+export default function CreateEventModal({
+  isOpen,
+  onClose,
+  latitude,
+  longitude,
+  onSuccess,
+  allowMedia = true,
+  categories = []
+}: CreateEventModalProps) {
+  const toast = useToast()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [selectedType, setSelectedType] = useState('concert')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const deviceId = useDeviceId()
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!title.trim() || !description.trim()) {
-      toast.error('Please fill all fields')
-      return
-    }
-
-    if (!deviceId) return
-
-    setIsSubmitting(true)
-    try {
-      const { error } = await supabase
-        .from('live_events')
-        .insert({
-          device_id: deviceId,
-          type: selectedType,
-          title: title.trim(),
-          description: description.trim(),
-          latitude,
-          longitude,
-          location: `POINT(${longitude} ${latitude})`
-        })
-
-      if (error) throw error
-
-      toast.success('🎉 Live event created!', { duration: 3000 })
-      onSuccess?.()
-      onClose()
-      
-      // Reset form
-      setTitle('')
-      setDescription('')
-      setSelectedType('concert')
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to create event')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+  const [eventType, setEventType] = useState(categories[0]?.id || 'other')
+  const [customType, setCustomType] = useState('')
+  const [mediaFile, setMediaFile] = useState<File | null>(null)
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   if (!isOpen) return null
 
-  const selectedEventType = eventTypes.find(t => t.value === selectedType)!
+  const reset = () => {
+    setTitle('')
+    setDescription('')
+    setEventType(categories[0]?.id || 'other')
+    setCustomType('')
+    setMediaFile(null)
+    setMediaPreview(null)
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    // 15MB limit
+    if (file.size > 15 * 1024 * 1024) {
+      toast('File must be under 15MB', 'error')
+      return
+    }
+    setMediaFile(file)
+    const reader = new FileReader()
+    reader.onloadend = () => setMediaPreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveMedia = () => {
+    setMediaFile(null)
+    setMediaPreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!title.trim()) {
+      toast('Event title is required', 'error')
+      return
+    }
+    setUploading(true)
+    let mediaUrl: string | null = null
+    try {
+      if (mediaFile) {
+        const ext = (mediaFile.name || '').split('.').pop() || 'jpg'
+        const fileName = `event-${Date.now()}.${ext}`
+        const { error: uploadError } = await supabase
+          .storage.from('event-media')
+          .upload(fileName, mediaFile)
+        if (uploadError) throw uploadError
+        const { data: { publicUrl } } = supabase.storage.from('event-media').getPublicUrl(fileName)
+        mediaUrl = publicUrl
+      }
+      const eventTypeFinal = eventType === 'other' && customType.trim()
+        ? customType : categories.find(cat => cat.id === eventType)?.label || 'Other'
+      const { error } = await supabase.from('live_events').insert({
+        type: eventTypeFinal,
+        title: title.trim(),
+        description: description.trim(),
+        latitude,
+        longitude,
+        media_url: mediaUrl,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      })
+      if (error) throw error
+      toast('🎉 Event posted!', 'success')
+      reset()
+      onClose()
+      onSuccess?.()
+    } catch (error: any) {
+      toast(error.message || 'Failed to create event', 'error')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[70] bg-black/70 flex items-center justify-center"
+        style={{ backdropFilter: 'blur(4px)' }}
+        onClick={onClose}
+      >
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-          onClick={onClose}
+          initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+          className="bg-gray-900 border-2 border-orange-600 rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 relative flex flex-col gap-5"
+          onClick={e => e.stopPropagation()}
         >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl max-w-md w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className={`bg-gradient-to-r ${selectedEventType.color} p-4 rounded-t-2xl`}>
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span className="text-2xl">{selectedEventType.emoji}</span>
-                  Create Live Event
-                </h2>
-                <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-                  <X className="w-5 h-5 text-white" />
-                </button>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              {/* Event Type Selector */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-3">Event Type</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {eventTypes.map((type) => {
-                    const Icon = type.icon
-                    return (
-                      <button
-                        key={type.value}
-                        type="button"
-                        onClick={() => setSelectedType(type.value)}
-                        className={`p-3 rounded-xl border-2 transition-all ${
-                          selectedType === type.value
-                            ? `bg-gradient-to-r ${type.color} border-transparent text-white`
-                            : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
-                        }`}
-                      >
-                        <div className="flex flex-col items-center gap-2">
-                          <Icon className="w-6 h-6" />
-                          <span className="text-sm font-medium">{type.label}</span>
-                        </div>
-                      </button>
-                    )
-                  })}
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-bold text-white text-lg flex items-center gap-2">
+              <Zap className="w-5 h-5" /> Create Event
+            </h2>
+            <button onClick={() => { reset(); onClose(); }} className="p-2 rounded-lg hover:bg-white/10">
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Title */}
+            <input
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"
+              placeholder="Event title (e.g. Chill party, Study marathon...)"
+              value={title}
+              maxLength={50}
+              onChange={e => setTitle(e.target.value)}
+              disabled={uploading}
+              required
+            />
+            {/* Category */}
+            <div>
+              <label className="text-xs text-gray-300 mb-2 block font-bold">Category</label>
+              <div className="flex flex-wrap gap-2">
+                {categories.map(cat => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    className={`px-3 py-1.5 text-xs rounded-lg border font-medium transition-all ${
+                      eventType === cat.id
+                        ? 'bg-orange-600 text-white border-orange-600'
+                        : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-orange-700/20'
+                    }`}
+                    onClick={() => setEventType(cat.id)}
+                    disabled={uploading}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
                 </div>
-              </div>
-
-              {/* Title */}
-              <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-2">
-                  Event Title
-                </label>
-                <input
-                  id="title"
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g., Taylor Swift Concert"
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-500"
-                  maxLength={50}
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
-                  Description
-                </label>
-                <textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="What's happening?"
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-500 resize-none"
-                  rows={3}
-                  maxLength={200}
-                />
-                <p className="text-xs text-gray-500 mt-1 text-right">{description.length}/200</p>
-              </div>
-
-              {/* Submit */}
-              <Button
-                type="submit"
-                disabled={isSubmitting || !title.trim() || !description.trim()}
-                isLoading={isSubmitting}
-                size="lg"
-                className="w-full"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-5 h-5 mr-2" />
-                    Create Live Event
-                  </>
+                {/* Custom category input */}
+                {eventType === 'other' && (
+                  <input
+                    type="text"
+                    className="w-full mt-2 px-3 py-2 bg-gray-800 border border-orange-600 rounded-lg text-white placeholder-gray-400 text-sm"
+                    placeholder="Name your event category"
+                    value={customType}
+                    maxLength={20}
+                    onChange={e => setCustomType(e.target.value)}
+                    disabled={uploading}
+                  />
                 )}
-              </Button>
-            </form>
-          </motion.div>
+            </div>
+            {/* Description */}
+            <textarea
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none resize-none"
+              rows={2}
+              maxLength={150}
+              placeholder="Describe your event (optional)"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              disabled={uploading}
+            ></textarea>
+            {/* Media upload */}
+            {allowMedia && (
+              <div>
+                <label className="text-xs font-bold text-gray-300 mb-2 block">Optional: Upload photo or video</label>
+                {!mediaPreview ? (
+                  <button type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full py-3 rounded-xl border-2 border-dashed border-orange-600 flex flex-col items-center justify-center gap-2 transition-all bg-gray-900 hover:bg-orange-900/10"
+                    disabled={uploading}
+                  >
+                    <Upload className="w-8 h-8 text-orange-500" />
+                    <span className="text-xs text-white">Choose Image/Video</span>
+                  </button>
+                ) : (
+                  <div className="relative h-40 flex items-center justify-center rounded-xl overflow-hidden bg-gray-800 border-2 border-orange-500">
+                    {mediaFile?.type.startsWith('video') ? (
+                      <video
+                        src={mediaPreview}
+                        controls
+                        className="w-full h-full object-cover rounded-xl"
+                      />
+                    ) : (
+                      <img
+                        src={mediaPreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleRemoveMedia}
+                      className="absolute top-2 right-2 p-2 bg-red-500 rounded-full"
+                    >
+                      <X className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  aria-label="Upload photo or video"
+                  disabled={uploading}
+                />
+                <p className="text-xs text-gray-500 mt-1">Max size 15MB</p>
+              </div>
+            )}
+
+            {/* Submit */}
+            <Button
+              type="submit"
+              disabled={uploading || !title.trim()}
+              isLoading={uploading}
+              className="w-full bg-gradient-to-r from-orange-600 to-red-600"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Posting...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 mr-2" />
+                  Post Event (24h)
+                </>
+              )}
+            </Button>
+            <p className="text-xs text-center text-gray-500">
+              🎯 Your event will be live for 24 hours
+            </p>
+          </form>
         </motion.div>
-      )}
+      </motion.div>
     </AnimatePresence>
   )
 }
