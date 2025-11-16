@@ -9,6 +9,9 @@ import { useMessageActions } from '@/hooks/useMessageActions'
 import { formatTimeAgo, cn } from '@/lib/utils'
 import Badge from '@/components/ui/Badge'
 import ReplyModal from '@/components/features/Replies/ReplyModal'
+import ShareModal from '@/components/ui/ShareModal'
+import { Share2 } from 'lucide-react'
+
 
 interface MessageCardProps {
   message: Message
@@ -221,3 +224,4 @@ export default function MessageCard({ message }: MessageCardProps) {
     </>
   )
 }
+
