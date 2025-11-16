@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from '@/lib/supabase/client'
+
 
 export function useClanDiscovery(query: string) {
   const [clans, setClans] = useState([]);
