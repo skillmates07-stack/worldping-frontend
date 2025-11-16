@@ -2,13 +2,17 @@ import { useState } from 'react'
 import { Smile, Send } from 'lucide-react'
 import { useClanMessages } from '@/hooks/useClanMessages' // Connects to your clan message sending
 
-export default function ClanMessageForm({ clanId }) {
+interface ClanMessageFormProps {
+  clanId: string
+}
+
+export default function ClanMessageForm({ clanId }: ClanMessageFormProps) {
   const { sendMessage } = useClanMessages(clanId)
   const [content, setContent] = useState('')
   const [emoji, setEmoji] = useState('')
   const [sending, setSending] = useState(false)
 
-  async function handleSend(e) {
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault()
     if (!content && !emoji) return
     setSending(true)
@@ -28,11 +32,10 @@ export default function ClanMessageForm({ clanId }) {
         tabIndex={0}
         aria-label="Pick emoji"
         className="px-2 py-1 rounded-xl bg-gray-200 hover:bg-gray-300"
-        onClick={() => {/* open emoji picker */}}
+        // onClick={() => {/* open emoji picker (implement later) */}}
       >
         <Smile className="w-5 h-5" />
       </button>
-      {/* (EmojiPicker can be plugged in here) */}
       <input
         className="flex-1 p-2 rounded-lg border bg-white/80"
         placeholder="Type your clan message..."
