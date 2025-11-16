@@ -10,8 +10,8 @@ export default function ClanChatPanel() {
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const { clans } = useJoinedClans();
 
-  const handleJoinClan = (clanId) => {
-    // Re-fetch joined clans after joining, change active tab as needed
+  // Fixed: add type annotation for clanId
+  const handleJoinClan = (clanId: string) => {
     setActiveTab(clanId);
     setDiscoveryOpen(false);
   };
