@@ -17,7 +17,7 @@ export function useClanMessages(clanId: string) {
       .channel(`clan-messages-${clanId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'clan_messages', filter: `clan_id=eq.${clanId}`},
+        { event: '*', schema: 'public', table: 'clan_messages', filter: `clan_id=eq.${clanId}` },
         (payload) => {
           if (payload.eventType === 'INSERT') {
             setMessages(prev => [...prev, payload.new as Message])
@@ -58,10 +58,31 @@ export function useClanMessages(clanId: string) {
     }
   }
 
+  // 🎯 [Add THIS function to enable message sending]
+  async function sendMessage(content: string, emoji = ''): Promise<void> {
+    if (!clanId || !content) return
+    const { error } = await supabase
+      .from('clan_messages')
+      .insert([
+        {
+          clan_id: clanId,
+          device_id: deviceId,
+          content,
+          emoji,
+        },
+      ])
+    if (error) {
+      toast.error('Failed to send message')
+      throw error
+    }
+    // UI auto-updates from Supabase real-time insert
+  }
+
   return {
     messages,
     loading,
     error,
-    refetch: fetchMessages
+    refetch: fetchMessages,
+    sendMessage, // <--- ADD THIS TO THE RETURN OBJECT!
   }
 }
