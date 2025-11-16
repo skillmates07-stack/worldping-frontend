@@ -1,10 +1,9 @@
-// UI share modal: Next.js/React (add to src/components/ui/ShareModal.tsx)
 'use client'
 
 import { useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Twitter, Share2, Copy, Send, MessageCircle, Whatsapp } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { X, Twitter, Share2, Copy, Send, Whatsapp } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 interface ShareModalProps {
   isOpen: boolean
@@ -15,11 +14,12 @@ interface ShareModalProps {
 }
 
 export default function ShareModal({ isOpen, onClose, shareTitle, shareText, shareUrl }: ShareModalProps) {
+  const toast = useToast()
   const urlRef = useRef<HTMLInputElement>(null)
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl)
-    toast.success('Link copied!')
+    toast('Link copied!', 'success')
     urlRef.current?.select()
   }
   const shareToWhatsApp = () => {
@@ -31,7 +31,7 @@ export default function ShareModal({ isOpen, onClose, shareTitle, shareText, sha
   const shareSystem = () => {
     if (navigator.share) {
       navigator.share({ title: shareTitle, text: shareText, url: shareUrl })
-        .catch(() => { })
+        .catch(() => {})
     } else {
       handleCopy()
     }
