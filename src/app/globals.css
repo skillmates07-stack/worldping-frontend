@@ -6,7 +6,6 @@
   * {
     @apply border-border;
   }
-  
   body {
     @apply bg-black text-white antialiased;
   }
@@ -149,4 +148,27 @@
 /* Gradient Text */
 .gradient-text {
   @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500;
+}
+
+/* Fixed black overlay fix for modals and backgrounds */
+.modal-overlay {
+  background-color: rgba(0, 0, 0, 0.6); /* less intense black overlay */
+  backdrop-filter: blur(5px); /* softened blur */
+  z-index: 9999;
+}
+
+/* Ensure modal content is above overlay */
+.modal-content {
+  position: relative;
+  z-index: 10000;
+}
+
+/* Fix stacking contexts for floating buttons */
+.side-panel {
+  z-index: 10001 !important;
+}
+
+/* Ensure popups do not cover fixed buttons */
+.popup-pin {
+  z-index: 9998;
 }
