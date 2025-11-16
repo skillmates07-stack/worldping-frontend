@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import Map, { NavigationControl, GeolocateControl, Marker } from 'react-map-gl/maplibre'
 import { motion, AnimatePresence } from 'framer-motion'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -20,15 +20,27 @@ import { supabase } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import { Plus, MapPinned, Camera, Zap } from 'lucide-react'
 
+// Define strict EventType union
+type EventType = 'concert' | 'protest' | 'celebration' | 'emergency' | 'other'
+
 interface LiveEvent {
   id: string
-  type: string // any string, open-ended
+  type: EventType  // Narrowed type
   title: string
   description: string
   latitude: number
   longitude: number
   media_url?: string | null
   created_at: string
+}
+
+// Helper to normalize event type from your API
+function normalizeEventType(type: string): EventType {
+  const knownTypes: EventType[] = ['concert', 'protest', 'celebration', 'emergency', 'other']
+  if (knownTypes.includes(type as EventType)) {
+    return type as EventType
+  }
+  return 'other'
 }
 
 export default function MapContainer() {
@@ -42,17 +54,8 @@ export default function MapContainer() {
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null)
   const [locationError, setLocationError] = useState<string | null>(null)
 
-  const [modalState, setModalState] = useState<{
-    isOpen: boolean
-    lat: number
-    lng: number
-  }>({ isOpen: false, lat: 0, lng: 0 })
-
-  const [eventModalState, setEventModalState] = useState<{
-    isOpen: boolean
-    lat: number
-    lng: number
-  }>({ isOpen: false, lat: 0, lng: 0 })
+  const [modalState, setModalState] = useState<{ isOpen: boolean; lat: number; lng: number }>({ isOpen: false, lat: 0, lng: 0 })
+  const [eventModalState, setEventModalState] = useState<{ isOpen: boolean; lat: number; lng: number }>({ isOpen: false, lat: 0, lng: 0 })
 
   const [snapModalOpen, setSnapModalOpen] = useState(false)
   const [selectedSnap, setSelectedSnap] = useState<any>(null)
@@ -69,12 +72,14 @@ export default function MapContainer() {
 
   useEffect(() => {
     fetchLiveEvents()
-    subscribeToLiveEvents()
+    const unsubscribeLiveEvents = subscribeToLiveEvents()
+    return unsubscribeLiveEvents
   }, [])
 
   useEffect(() => {
     fetchSnaps()
-    subscribeToSnaps()
+    const unsubscribeSnaps = subscribeToSnaps()
+    return unsubscribeSnaps
   }, [])
 
   async function getUserLocation() {
@@ -106,8 +111,13 @@ export default function MapContainer() {
         .select('*')
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false })
+
       if (error) throw error
-      setLiveEvents(data || [])
+
+      setLiveEvents(data?.map(evt => ({
+        ...evt,
+        type: normalizeEventType(evt.type) // normalize type here
+      })) || [])
     } catch (error) {
       console.error('Error fetching live events:', error)
     }
@@ -116,10 +126,12 @@ export default function MapContainer() {
   function subscribeToLiveEvents() {
     const channel = supabase
       .channel('live-events')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'live_events' },
-        (payload) => setLiveEvents(prev => [payload.new as LiveEvent, ...prev])
-      )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'live_events' }, (payload) => {
+        const normalizedEvent = { ...payload.new as LiveEvent, type: normalizeEventType(payload.new.type) }
+        setLiveEvents(prev => [normalizedEvent, ...prev])
+      })
       .subscribe()
+
     return () => supabase.removeChannel(channel)
   }
 
@@ -140,10 +152,11 @@ export default function MapContainer() {
   function subscribeToSnaps() {
     const channel = supabase
       .channel('snaps-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'snaps' },
-        (payload) => setSnaps(prev => [payload.new as any, ...prev])
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'snaps' }, (payload) =>
+        setSnaps(prev => [payload.new as any, ...prev])
       )
       .subscribe()
+
     return () => supabase.removeChannel(channel)
   }
 
@@ -162,9 +175,7 @@ export default function MapContainer() {
             <span>👍 {message.upvotes}</span>
             <span>💬 {message.reply_count || 0} replies</span>
           </div>
-          {isOwnMessage && (
-            <span className="text-xs text-green-400">✓ Your message</span>
-          )}
+          {isOwnMessage && <span className="text-xs text-green-400">✓ Your message</span>}
         </div>
       ), { duration: 5000 })
     }
@@ -176,11 +187,7 @@ export default function MapContainer() {
       getUserLocation()
       return
     }
-    setModalState({
-      isOpen: true,
-      lat: userLocation.lat,
-      lng: userLocation.lng
-    })
+    setModalState({ isOpen: true, lat: userLocation.lat, lng: userLocation.lng })
   }
 
   const handlePostSnapAtMyLocation = () => {
@@ -227,8 +234,7 @@ export default function MapContainer() {
     ), { duration: 8000, style: { maxWidth: '400px' } })
   }
 
-  const handleLockedMarkerClick = (messageId: string) =>
-    toast.error('🔒 Drop your first message to unlock!')
+  const handleLockedMarkerClick = (messageId: string) => toast.error('🔒 Drop your first message to unlock!')
 
   return (
     <main className="relative w-full h-full">
@@ -248,8 +254,6 @@ export default function MapContainer() {
           showUserLocation={true}
           onGeolocate={(e) => setUserLocation({ lat: e.coords.latitude, lng: e.coords.longitude })}
         />
-
-        {/* User's Location Marker */}
         {userLocation && (
           <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="center">
             <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }} className="relative">
@@ -263,8 +267,6 @@ export default function MapContainer() {
             </motion.div>
           </Marker>
         )}
-
-        {/* Message Markers */}
         {messages.map((message) => {
           const isUnlocked = isMessageUnlocked(message.id)
           const isOwnMessage = message.device_id === deviceId
@@ -277,8 +279,8 @@ export default function MapContainer() {
                   onClick={() => handleMessageClick(message)}
                   className="relative cursor-pointer group"
                 >
-                  <div className={`w-10 h-10 ${isOwnMessage 
-                      ? 'bg-gradient-to-br from-green-500 to-emerald-600' 
+                  <div className={`w-10 h-10 ${isOwnMessage
+                      ? 'bg-gradient-to-br from-green-500 to-emerald-600'
                       : 'bg-gradient-to-br from-blue-500 to-blue-600'
                     } rounded-full border-2 border-white shadow-lg flex items-center justify-center text-xl transition-all duration-200`}>
                     {message.emoji || '💬'}
@@ -301,15 +303,11 @@ export default function MapContainer() {
             </Marker>
           )
         })}
-
-        {/* Live Event Markers */}
         {liveEvents.map((event) => (
           <Marker key={event.id} longitude={event.longitude} latitude={event.latitude} anchor="bottom">
             <LiveEventMarker event={event} onClick={() => handleEventMarkerClick(event)} />
           </Marker>
         ))}
-
-        {/* Snap Story Markers */}
         {snaps.map((snap) => (
           <Marker key={snap.id} longitude={snap.longitude} latitude={snap.latitude} anchor="bottom">
             <SnapMarker onClick={() => setSelectedSnap(snap)} />
@@ -363,7 +361,7 @@ export default function MapContainer() {
       {/* Top Right: DailyChallenges */}
       <DailyChallenges />
 
-      {/* Modals */}
+      {/* Modals and popups */}
       <MessageModal
         isOpen={modalState.isOpen}
         onClose={handleCloseModal}
@@ -380,8 +378,7 @@ export default function MapContainer() {
           fetchLiveEvents()
           setEventModalState(prev => ({ ...prev, isOpen: false }))
         }}
-        // Pass your feature flags
-        allowMedia={true}
+        allowMedia
         categories={[
           { id: 'party', label: 'Party 🎉' },
           { id: 'study', label: 'Study Session 📚' },
@@ -404,6 +401,7 @@ export default function MapContainer() {
         longitude={userLocation?.lng || 0}
         onSuccess={fetchSnaps}
       />
+
       {/* Location Permission Hint */}
       {!userLocation && !locationError && (
         <motion.div
