@@ -31,6 +31,7 @@ export interface Message {
   is_time_capsule?: boolean
   unlock_at?: string
   reply_count?: number  // ✅ ADD THIS LINE
+  avatarUrl?: string 
 }
 
 
@@ -52,5 +53,6 @@ export interface UserStreak {
   total_messages: number
   total_upvotes: number
 }
+
 
 
