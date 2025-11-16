@@ -1,9 +1,15 @@
 import { useState, useEffect } from "react";
-import { supabase } from '@/lib/supabase/client'
 
+interface Clan {
+  id: string;
+  name: string;
+  emoji?: string;
+  member_count?: number;
+  privacy?: string;
+}
 
 export function useClanDiscovery(query: string) {
-  const [clans, setClans] = useState([]);
+  const [clans, setClans] = useState<Clan[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -15,6 +21,7 @@ export function useClanDiscovery(query: string) {
         .ilike("name", `%${query}%`)
         .order("member_count", { ascending: false })
         .limit(20);
+
       setClans(data ?? []);
       setLoading(false);
     })();
