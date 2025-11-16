@@ -1,13 +1,20 @@
 import { useState } from "react";
 import { Globe, Users, Plus } from "lucide-react";
-// Replace with your real hooks and data fetching!
 import { useJoinedClans } from "@/hooks/useClanMembership";
 import GlobalChatPanel from "../GlobalChat/GlobalChatPanel";
 import ClanMessagesPanel from "./ClanMessagesPanel";
+import ClanDiscoveryModal from "./ClanDiscoveryModal"; // For join/create clan modal
 
 export default function ClanChatPanel() {
   const [activeTab, setActiveTab] = useState<"global" | string>("global");
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const { clans } = useJoinedClans();
+
+  const handleJoinClan = (clanId) => {
+    // Re-fetch joined clans after joining, change active tab as needed
+    setActiveTab(clanId);
+    setDiscoveryOpen(false);
+  };
 
   return (
     <div className="w-full max-w-xl mx-auto bg-white/80 backdrop-blur rounded-2xl shadow-lg">
@@ -24,13 +31,24 @@ export default function ClanChatPanel() {
             {clan.unread > 0 && <span className="badge">{clan.unread}</span>}
           </button>
         ))}
-        <button className="ml-auto" aria-label="Join or create clan">
+        <button
+          className="ml-auto"
+          aria-label="Join or create clan"
+          onClick={() => setDiscoveryOpen(true)}
+        >
           <Plus className="w-5 h-5" />
         </button>
       </div>
       <div className="p-4 min-h-[300px]">
-        {activeTab === "global" ? <GlobalChatPanel /> : <ClanMessagesPanel clanId={activeTab} />}
+        {activeTab === "global"
+          ? <GlobalChatPanel />
+          : <ClanMessagesPanel clanId={activeTab} />}
       </div>
+      <ClanDiscoveryModal
+        open={discoveryOpen}
+        onClose={() => setDiscoveryOpen(false)}
+        onJoin={handleJoinClan}
+      />
     </div>
   );
 }
