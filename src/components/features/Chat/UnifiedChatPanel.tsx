@@ -9,6 +9,7 @@ import { useClanMessages } from '@/hooks/useClanMessages'
 import { formatTimeAgo } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase/client'
+import ClanBrowseModal from '@/components/features/ClanChat/ClanBrowseModal'
 
 interface ChatMessage {
   id: string
@@ -28,10 +29,11 @@ export default function UnifiedChatPanel() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [onlineCount, setOnlineCount] = useState(0)
+  const [showClanDiscovery, setShowClanDiscovery] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const deviceId = useDeviceId()
 
-  const { clans } = useJoinedClans()
+  const { clans, loading: clansLoading } = useJoinedClans()
   const activeClanId = activeTab !== 'global' ? activeTab : null
   const { messages: clanMessages = [], loading: clanLoading } = useClanMessages(activeClanId || '')
   
@@ -130,6 +132,11 @@ export default function UnifiedChatPanel() {
     }
   }
 
+  function handleClanJoined() {
+    // Reload or refetch clans after user joins a new one
+    window.location.reload()
+  }
+
   return (
     <>
       <AnimatePresence>
@@ -198,7 +205,7 @@ export default function UnifiedChatPanel() {
               </div>
               
               {!isMinimized && (
-                <div className="flex gap-2 overflow-x-auto">
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide">
                   <button
                     onClick={() => setActiveTab('global')}
                     className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
@@ -226,8 +233,9 @@ export default function UnifiedChatPanel() {
                     </button>
                   ))}
                   <button
-                    onClick={() => toast('Show clan discovery modal')}
+                    onClick={() => setShowClanDiscovery(true)}
                     className="flex-shrink-0 px-2 py-1 rounded-lg bg-blue-500 text-white hover:bg-blue-400 flex items-center"
+                    title="Discover & Join Clans"
                   >
                     <Plus className="w-5 h-5" />
                   </button>
@@ -315,6 +323,13 @@ export default function UnifiedChatPanel() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Clan Browse/Discovery Modal */}
+      <ClanBrowseModal
+        isOpen={showClanDiscovery}
+        onClose={() => setShowClanDiscovery(false)}
+        onJoined={handleClanJoined}
+      />
     </>
   )
 }
