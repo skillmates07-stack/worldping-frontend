@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Users, Shield, Search } from "lucide-react";
+import { X, Users, Shield, Search, TrendingUp, Grid } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { useDeviceId } from "@/hooks/useDeviceId";
 import toast from "react-hot-toast";
@@ -12,6 +12,8 @@ interface Clan {
   description?: string;
   member_count: number;
   privacy: string;
+  message_count?: number;
+  created_at?: string;
 }
 
 interface ClanBrowseModalProps {
@@ -24,25 +26,32 @@ export default function ClanBrowseModal({ isOpen, onClose, onJoined }: ClanBrows
   const [clans, setClans] = useState<Clan[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [view, setView] = useState<'all' | 'trending'>('all');
   const deviceId = useDeviceId();
 
   useEffect(() => {
     if (isOpen) {
       fetchClans();
     }
-  }, [isOpen, search]);
+  }, [isOpen, search, view]);
 
   async function fetchClans() {
     setLoading(true);
     try {
       let query = supabase
         .from("clans")
-        .select("*")
-        .order("member_count", { ascending: false })
-        .limit(20);
+        .select("*");
 
+      // Filter by search
       if (search) {
         query = query.ilike("name", `%${search}%`);
+      }
+
+      // Sort and limit based on view
+      if (view === 'trending') {
+        query = query.order('member_count', { ascending: false }).limit(10);
+      } else {
+        query = query.order('created_at', { ascending: false }).limit(20);
       }
 
       const { data, error } = await query;
@@ -57,7 +66,7 @@ export default function ClanBrowseModal({ isOpen, onClose, onJoined }: ClanBrows
 
   async function joinClan(clanId: string, clanName: string) {
     if (!deviceId) {
-      toast.error("Device ID not found");
+      toast.error("Please wait, authenticating...");
       return;
     }
 
@@ -134,6 +143,32 @@ export default function ClanBrowseModal({ isOpen, onClose, onJoined }: ClanBrows
             </div>
           </div>
 
+          {/* Tabs */}
+          <div className="flex gap-2 border-b border-gray-800 px-4 pb-2 pt-2">
+            <button
+              onClick={() => setView('all')}
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
+                view === 'all' 
+                  ? 'bg-purple-600 text-white' 
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
+            >
+              <Grid className="w-4 h-4" />
+              All Clans
+            </button>
+            <button
+              onClick={() => setView('trending')}
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
+                view === 'trending' 
+                  ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white' 
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
+            >
+              <TrendingUp className="w-4 h-4" />
+              🔥 Trending
+            </button>
+          </div>
+
           {/* Clans List */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {loading ? (
@@ -142,13 +177,18 @@ export default function ClanBrowseModal({ isOpen, onClose, onJoined }: ClanBrows
               </div>
             ) : clans.length === 0 ? (
               <div className="text-center text-gray-400 py-8">
-                No clans found
+                <Users className="w-12 h-12 mx-auto mb-2 text-gray-600" />
+                <p className="font-medium">No clans found</p>
+                <p className="text-sm mt-1">Try a different search</p>
               </div>
             ) : (
-              clans.map((clan) => (
-                <div
+              clans.map((clan, index) => (
+                <motion.div
                   key={clan.id}
-                  className="bg-gray-800 rounded-xl p-4 hover:bg-gray-750 transition-colors"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="bg-gray-800 rounded-xl p-4 hover:bg-gray-750 transition-colors border border-gray-700 hover:border-purple-500"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3 flex-1">
@@ -159,24 +199,36 @@ export default function ClanBrowseModal({ isOpen, onClose, onJoined }: ClanBrows
                           {clan.privacy === "private" && (
                             <Shield className="w-4 h-4 text-purple-400" />
                           )}
+                          {view === 'trending' && index < 3 && (
+                            <span className="text-xs bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded-full font-bold">
+                              #{index + 1}
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm text-gray-400 mt-1">
                           {clan.description || "No description"}
                         </p>
-                        <p className="text-xs text-gray-500 mt-2">
-                          <Users className="w-3 h-3 inline mr-1" />
-                          {clan.member_count} members
-                        </p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {clan.member_count} members
+                          </span>
+                          {view === 'trending' && clan.message_count !== undefined && (
+                            <span className="flex items-center gap-1">
+                              💬 {clan.message_count} messages
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <button
                       onClick={() => joinClan(clan.id, clan.name)}
-                      className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-lg font-medium transition-all"
+                      className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-lg font-medium transition-all whitespace-nowrap"
                     >
                       Join
                     </button>
                   </div>
-                </div>
+                </motion.div>
               ))
             )}
           </div>
