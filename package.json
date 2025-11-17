@@ -13,6 +13,8 @@
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "@supabase/supabase-js": "^2.45.0",
+    "@supabase/auth-ui-react": "^0.4.7",
+    "@supabase/auth-ui-shared": "^0.1.8",
     "maplibre-gl": "^4.7.0",
     "react-map-gl": "^7.1.7",
     "date-fns": "^4.1.0",
@@ -21,11 +23,6 @@
     "framer-motion": "^11.11.17",
     "react-hot-toast": "^2.4.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^0.462.0",
-    "framer-motion": "^11.11.17",
-    "react-hot-toast": "^2.4.1",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^2.5.4",
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
@@ -40,4 +37,3 @@
     "eslint-config-next": "^15.0.0"
   }
 }
-
