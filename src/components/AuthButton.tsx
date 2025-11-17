@@ -1,39 +1,48 @@
-'use client'
+// src/components/AuthButton.tsx
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase/client";
+import { Auth } from "@supabase/auth-ui-react";
+import { ThemeSupa } from "@supabase/auth-ui-shared";
 
-import { useState } from 'react'
-import { useAuth } from '@/hooks/useAuth'
-import { supabase } from '@/lib/supabase/client'
-import AuthModal from '@/components/AuthModal'
-import { User, LogOut } from 'lucide-react'
+export function AuthButton() {
+  const [show, setShow] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
-export default function AuthButton() {
-  const { user, loading } = useAuth()
-  const [showAuthModal, setShowAuthModal] = useState(false)
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) setShow(false); // close modal after login
+    });
+    return () => listener?.subscription.unsubscribe();
+  }, []);
 
-  if (loading) return null
-
-  if (user) {
-    return (
-      <button
-        onClick={() => supabase.auth.signOut()}
-        className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white transition-colors"
-      >
-        <User className="w-4 h-4" />
-        <span className="text-sm">{user.email?.split('@')[0] || 'User'}</span>
-        <LogOut className="w-4 h-4" />
-      </button>
-    )
-  }
+  if (user) return <div className="text-white px-4 py-2">Signed in as {user.email || 'user'}</div>;
 
   return (
     <>
       <button
-        onClick={() => setShowAuthModal(true)}
-        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg text-white font-medium transition-all"
+        onClick={() => setShow(true)}
+        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white font-medium"
       >
         Sign In
       </button>
-      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      {show && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-[100]">
+          <div className="bg-gray-900 p-6 rounded-lg" onClick={e => e.stopPropagation()}>
+            <Auth
+              supabaseClient={supabase}
+              providers={["google"]}
+              appearance={{ theme: ThemeSupa }}
+              onlyThirdPartyProviders
+              theme="dark"
+            />
+            <button onClick={() => setShow(false)} className="mt-4 text-pink-500 hover:underline">Cancel</button>
+          </div>
+        </div>
+      )}
     </>
-  )
+  );
 }
