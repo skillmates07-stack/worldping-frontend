@@ -12,19 +12,11 @@ interface ClanCreateModalProps {
 }
 
 const EMOJI_OPTIONS = ['💻', '🎮', '✈️', '🎨', '🎵', '📚', '⚽', '🍕', '🌟', '🔥', '💎', '🚀'];
-const COLOR_OPTIONS = [
-  'from-blue-500 to-purple-500',
-  'from-green-500 to-teal-500',
-  'from-red-500 to-pink-500',
-  'from-yellow-500 to-orange-500',
-  'from-indigo-500 to-purple-500',
-];
 
 export default function ClanCreateModal({ isOpen, onClose, onCreated }: ClanCreateModalProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [emoji, setEmoji] = useState('🌟');
-  const [color, setColor] = useState(COLOR_OPTIONS[0]);
   const [privacy, setPrivacy] = useState<'public' | 'private'>('public');
   const [creating, setCreating] = useState(false);
   const deviceId = useDeviceId();
@@ -49,7 +41,6 @@ export default function ClanCreateModal({ isOpen, onClose, onCreated }: ClanCrea
           name: name.trim(),
           description: description.trim(),
           emoji,
-          color,
           privacy,
           created_by: deviceId,
           member_count: 1
@@ -79,7 +70,6 @@ export default function ClanCreateModal({ isOpen, onClose, onCreated }: ClanCrea
 
       toast.success(`🎉 Created ${name}!`);
       onCreated();
-      onClose();
       resetForm();
     } catch (error) {
       console.error('Error creating clan:', error);
@@ -93,7 +83,6 @@ export default function ClanCreateModal({ isOpen, onClose, onCreated }: ClanCrea
     setName('');
     setDescription('');
     setEmoji('🌟');
-    setColor(COLOR_OPTIONS[0]);
     setPrivacy('public');
   }
 
@@ -105,7 +94,7 @@ export default function ClanCreateModal({ isOpen, onClose, onCreated }: ClanCrea
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4"
+        className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4"
         onClick={onClose}
       >
         <motion.div
