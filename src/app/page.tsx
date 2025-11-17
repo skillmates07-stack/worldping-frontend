@@ -1,18 +1,22 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { motion } from 'framer-motion'
-import { Globe, Sparkles, TrendingUp } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Globe, Sparkles, TrendingUp, MessageSquare, X } from 'lucide-react'
 import { MessageFeed } from '@/components/features/MessageFeed'
 import DiscoverPanel from '@/components/features/Discover/DiscoverPanel'
 import ProfilePanel from '@/components/features/Profile/ProfilePanel'
 import StreakBadge from '@/components/features/Streak/StreakBadge'
 import UnifiedChatPanel from '@/components/features/Chat/UnifiedChatPanel'
+import { Auth } from '@supabase/auth-ui-react'
+import { ThemeSupa } from '@supabase/auth-ui-shared'
+import { supabase } from '@/lib/supabase/client'
 
 const MapContainer = dynamic(
   () => import('@/components/features/Map/MapContainer').then(mod => mod.default),
-  { 
-    ssr: false, 
+  {
+    ssr: false,
     loading: () => (
       <div className="w-full h-full bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -28,17 +32,68 @@ const MapContainer = dynamic(
   }
 )
 
+function useSupabaseUser() {
+  const [user, setUser] = useState<any>(null)
+  const [checking, setChecking] = useState(true)
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      setChecking(false)
+    })
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => { listener?.subscription.unsubscribe() }
+  }, [])
+  return { user, checking }
+}
+
 export default function HomePage() {
+  const { user, checking } = useSupabaseUser()
+  const [showMessageFeed, setShowMessageFeed] = useState(false)
+
+  if (checking) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-black">
+        <div className="text-center text-white">Checking authentication…</div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-black">
+        <div className="w-full max-w-md bg-gray-900 rounded-xl border-2 border-purple-500 p-4 shadow-2xl">
+          <div className="font-bold text-xl text-center mb-4 text-white">
+            Welcome to WorldPing <span className="text-lg font-normal block text-gray-400">Sign in required</span>
+          </div>
+          <Auth
+            supabaseClient={supabase}
+            appearance={{
+              theme: ThemeSupa,
+              variables: {
+                default: { colors: { brand: '#9333ea', brandAccent: '#a855f7' } }
+              }
+            }}
+            providers={['google']}
+            theme="dark"
+            onlyThirdPartyProviders
+            magicLink={true}
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-screen bg-black">
       {/* Professional Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ type: "spring", stiffness: 100 }}
         className="relative bg-gradient-to-r from-gray-900 via-black to-gray-900 border-b border-gray-800"
       >
-        {/* Animated Background */}
         <div className="absolute inset-0 opacity-30">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 animate-shimmer"></div>
         </div>
@@ -46,14 +101,14 @@ export default function HomePage() {
         <div className="relative px-6 py-4 flex items-center justify-between">
           {/* Logo & Title */}
           <div className="flex items-center gap-3">
-            <motion.div 
+            <motion.div
               whileHover={{ rotate: 360, scale: 1.1 }}
               transition={{ duration: 0.5 }}
               className="w-12 h-12 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-xl flex items-center justify-center shadow-lg"
             >
               <Globe className="w-7 h-7 text-white" />
             </motion.div>
-            
+
             <div>
               <h1 className="text-2xl font-bold gradient-text">
                 WorldPing
@@ -65,65 +120,80 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="hidden md:flex items-center gap-6">
-            <div className="text-center">
-              <div className="flex items-center gap-1 text-green-400 text-sm font-semibold">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                Live
+          {/* Stats & Message Toggle Button */}
+          <div className="flex items-center gap-6">
+            <div className="hidden md:flex items-center gap-6">
+              <div className="text-center">
+                <div className="flex items-center gap-1 text-green-400 text-sm font-semibold">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  Live
+                </div>
+                <p className="text-xs text-gray-500">Active Now</p>
               </div>
-              <p className="text-xs text-gray-500">Active Now</p>
-            </div>
-            
-            <div className="w-px h-10 bg-gray-800"></div>
-            
-            <div className="text-center">
-              <div className="flex items-center gap-1 text-blue-400 text-sm font-semibold">
-                <TrendingUp className="w-4 h-4" />
-                v2.0
+
+              <div className="w-px h-10 bg-gray-800"></div>
+
+              <div className="text-center">
+                <div className="flex items-center gap-1 text-blue-400 text-sm font-semibold">
+                  <TrendingUp className="w-4 h-4" />
+                  v2.0
+                </div>
+                <p className="text-xs text-gray-500">Latest</p>
               </div>
-              <p className="text-xs text-gray-500">Latest</p>
             </div>
+
+            {/* Toggle Message Feed Button */}
+            <button
+              onClick={() => setShowMessageFeed(!showMessageFeed)}
+              className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg text-white transition-all shadow-lg"
+              title="Toggle Message Feed"
+            >
+              {showMessageFeed ? <X className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
+            </button>
           </div>
         </div>
       </motion.header>
 
       {/* Main Content */}
       <main className="flex-1 flex overflow-hidden relative">
-        {/* Streak Badge */}
         <StreakBadge />
-        
-        {/* Map - 70% on desktop, 100% on mobile */}
-        <motion.div 
+
+        {/* Map - Full width, or 70% if sidebar is open */}
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="w-full lg:w-[70%] h-full relative"
+          className={`h-full transition-all duration-300 ${
+            showMessageFeed ? 'w-full lg:w-[70%]' : 'w-full'
+          }`}
         >
           <MapContainer />
         </motion.div>
-        
-        {/* Message Feed Sidebar */}
-        <motion.aside 
-          initial={{ x: 400 }}
-          animate={{ x: 0 }}
-          transition={{ type: "spring", stiffness: 100 }}
-          className="hidden lg:block lg:w-[30%] h-full border-l border-gray-800 overflow-hidden"
-        >
-          <MessageFeed />
-        </motion.aside>
+
+        {/* Message Feed Sidebar - Only shows when toggled */}
+        <AnimatePresence>
+          {showMessageFeed && (
+            <motion.aside
+              initial={{ x: 400, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 400, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 100 }}
+              className="hidden lg:block lg:w-[30%] h-full border-l border-gray-800 overflow-hidden bg-gray-900"
+            >
+              <MessageFeed />
+            </motion.aside>
+          )}
+        </AnimatePresence>
       </main>
-      
+
       {/* Profile Panel */}
-        <ProfilePanel />
+      <ProfilePanel />
 
       {/* Discover Panel */}
-        <DiscoverPanel />
+      <DiscoverPanel />
 
-      {/* Unified Chat (Global + City) */}
+      {/* Unified Chat (Global + Clans) */}
       <UnifiedChatPanel />
     </div>
   )
 }
-
-
