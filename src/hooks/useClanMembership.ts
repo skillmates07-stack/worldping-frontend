@@ -1,14 +1,11 @@
-// src/hooks/useClanMembership.ts
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
-
 
 export interface Clan {
   id: string;
   name: string;
   emoji?: string;
   unread?: number;
-  // Add any other fields your clan objects include
 }
 
 export function useJoinedClans(): { clans: Clan[]; loading: boolean } {
@@ -17,44 +14,54 @@ export function useJoinedClans(): { clans: Clan[]; loading: boolean } {
 
   useEffect(() => {
     let mounted = true;
+    
     async function fetchClans() {
       setLoading(true);
-      // Example: Replace with your method to get current deviceId or userId
+      
+      // Get device ID
       const currentDeviceId =
         typeof window !== "undefined" ? localStorage.getItem("deviceId") : "";
+      
+      console.log("Current device ID:", currentDeviceId); // Debug log
+      
       if (!currentDeviceId) {
+        console.warn("No device ID found");
         setClans([]);
         setLoading(false);
         return;
       }
-      // Query all clan memberships for this user/device
+
+      // Query clan memberships
       const { data: memberships, error } = await supabase
         .from("clan_members")
         .select("clan_id, clans:clan_id(id, name, emoji)")
         .eq("device_id", currentDeviceId);
 
+      console.log("Fetched memberships:", memberships, "Error:", error); // Debug log
+
       if (!mounted) return;
+      
       if (error) {
+        console.error("Error fetching clans:", error);
         setClans([]);
       } else if (memberships) {
-        // Flatten clan data and optionally add unread (set to 0 for now)
-        setClans(
-          memberships
-            .filter((m: any) => m.clans)
-            .map(
-              (m: any) =>
-                ({
-                  id: m.clans.id,
-                  name: m.clans.name,
-                  emoji: m.clans.emoji,
-                  unread: 0
-                } as Clan)
-            )
-        );
+        const clanList = memberships
+          .filter((m: any) => m.clans)
+          .map((m: any) => ({
+            id: m.clans.id,
+            name: m.clans.name,
+            emoji: m.clans.emoji,
+            unread: 0
+          } as Clan));
+        
+        console.log("Parsed clans:", clanList); // Debug log
+        setClans(clanList);
       }
       setLoading(false);
     }
+    
     fetchClans();
+    
     return () => {
       mounted = false;
     };
