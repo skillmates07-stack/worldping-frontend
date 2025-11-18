@@ -21,7 +21,7 @@ export function useAuth() {
     }
 
     async function ensureProfile(userId: string) {
-      // Use maybeSingle() here to avoid 406 error if there's no existing profile (brand-new user)
+      // Use maybeSingle to avoid error if profile doesn't exist
       let { data: existingProfile } = await supabase
         .from('user_profiles')
         .select('*')
@@ -30,13 +30,13 @@ export function useAuth() {
 
       if (!existingProfile) {
         // Create new profile with unique username
-        const displayName = await generateUniqueUsername(supabase)
+        const username = await generateUniqueUsername(supabase)
 
         const { data: newProfile } = await supabase
           .from('user_profiles')
           .insert({
             user_id: userId,
-            display_name: displayName
+            username: username     // THE FIX: must match your DB column name!
           })
           .select()
           .single()
