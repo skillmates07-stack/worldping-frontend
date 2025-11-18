@@ -13,27 +13,25 @@ export function useAuth() {
   useEffect(() => {
     async function initialize() {
       const { data: { session } } = await supabase.auth.getSession()
-      
       if (session?.user) {
         setUser(session.user)
         await ensureProfile(session.user.id)
       }
-      
       setLoading(false)
     }
 
     async function ensureProfile(userId: string) {
-      // Check if profile exists
+      // Use maybeSingle() here to avoid 406 error if there's no existing profile (brand-new user)
       let { data: existingProfile } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (!existingProfile) {
         // Create new profile with unique username
         const displayName = await generateUniqueUsername(supabase)
-        
+
         const { data: newProfile } = await supabase
           .from('user_profiles')
           .insert({
@@ -42,7 +40,7 @@ export function useAuth() {
           })
           .select()
           .single()
-        
+
         existingProfile = newProfile
       }
 
