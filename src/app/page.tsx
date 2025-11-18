@@ -12,6 +12,7 @@ import UnifiedChatPanel from '@/components/features/Chat/UnifiedChatPanel'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import { supabase } from '@/lib/supabase/client'
+import type { User } from '@supabase/supabase-js'
 
 const MapContainer = dynamic(
   () => import('@/components/features/Map/MapContainer').then(mod => mod.default),
@@ -32,40 +33,126 @@ const MapContainer = dynamic(
   }
 )
 
+// Random username generator (Reddit-style)
+const ADJECTIVES = ['cosmic','neon','silver','golden','electric','quantum','stellar','crystal','digital','cyber','ultra','blazing','frozen','mystic','emerald','sapphire','ruby','lunar','solar','ancient']
+const NOUNS = ['phoenix','dragon','tiger','wolf','eagle','falcon','raven','panda','dolphin','whale','shark','octopus','lion','leopard','wizard','bear','ninja','knight','warrior','ranger']
+
+function generateUsername() {
+  const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
+  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)]
+  const number = Math.floor(100 + Math.random() * 900)
+  return `${adjective}_${noun}${number}`
+}
+
+// Enhanced auth hook with profile management
 function useSupabaseUser() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<any>(null)
   const [checking, setChecking] = useState(true)
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
+    async function initializeAuth() {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session?.user) {
+        setUser(session.user)
+        await ensureProfile(session.user.id)
+      }
+      
       setChecking(false)
-    })
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    }
+
+    async function ensureProfile(userId: string) {
+      // Check if profile exists
+      let { data: existingProfile } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+
+      if (!existingProfile) {
+        // First-time login: generate unique username
+        let unique = false
+        let username = ''
+        
+        while (!unique) {
+          username = generateUsername()
+          const { data } = await supabase
+            .from('user_profiles')
+            .select('display_name')
+            .eq('display_name', username)
+            .single()
+          
+          unique = !data // Unique if not found
+        }
+        
+        // Create new profile with random username
+        const { data: newProfile } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: userId,
+            display_name: username
+          })
+          .select()
+          .single()
+        
+        existingProfile = newProfile
+      }
+
+      setProfile(existingProfile)
+    }
+
+    initializeAuth()
+
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null)
+      if (session?.user) {
+        await ensureProfile(session.user.id)
+      } else {
+        setProfile(null)
+      }
     })
+
     return () => { listener?.subscription.unsubscribe() }
   }, [])
-  return { user, checking }
+
+  return { user, profile, checking }
 }
 
 export default function HomePage() {
-  const { user, checking } = useSupabaseUser()
+  const { user, profile, checking } = useSupabaseUser()
   const [showMessageFeed, setShowMessageFeed] = useState(false)
 
   if (checking) {
     return (
       <div className="flex h-screen items-center justify-center bg-black">
-        <div className="text-center text-white">Checking authentication…</div>
+        <div className="text-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"
+          />
+          <p className="text-white text-sm">Checking authentication...</p>
+        </div>
       </div>
     )
   }
 
-  if (!user) {
+  if (!user || !profile) {
     return (
       <div className="flex h-screen items-center justify-center bg-black">
-        <div className="w-full max-w-md bg-gray-900 rounded-xl border-2 border-purple-500 p-4 shadow-2xl">
-          <div className="font-bold text-xl text-center mb-4 text-white">
-            Welcome to WorldPing <span className="text-lg font-normal block text-gray-400">Sign in required</span>
+        <div className="w-full max-w-md bg-gray-900 rounded-xl border-2 border-purple-500 p-6 shadow-2xl">
+          <div className="text-center mb-6">
+            <motion.div
+              whileHover={{ rotate: 360, scale: 1.1 }}
+              transition={{ duration: 0.5 }}
+              className="w-16 h-16 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-xl flex items-center justify-center shadow-lg mx-auto mb-4"
+            >
+              <Globe className="w-10 h-10 text-white" />
+            </motion.div>
+            <h1 className="text-2xl font-bold text-white mb-2">Welcome to WorldPing</h1>
+            <p className="text-gray-400 text-sm">Sign in with email to start dropping messages</p>
+            <p className="text-purple-400 text-xs mt-2">✨ Get a random username like Reddit!</p>
           </div>
           <Auth
             supabaseClient={supabase}
@@ -75,9 +162,8 @@ export default function HomePage() {
                 default: { colors: { brand: '#9333ea', brandAccent: '#a855f7' } }
               }
             }}
-            providers={['google']}
+            providers={[]}  // No Google for now
             theme="dark"
-            onlyThirdPartyProviders
             magicLink={true}
           />
         </div>
@@ -122,6 +208,12 @@ export default function HomePage() {
 
           {/* Stats & Message Toggle Button */}
           <div className="flex items-center gap-6">
+            {/* Display Username */}
+            <div className="hidden md:block text-right">
+              <p className="text-xs text-gray-500">Signed in as</p>
+              <p className="text-sm font-bold text-purple-400">{profile.display_name}</p>
+            </div>
+
             <div className="hidden md:flex items-center gap-6">
               <div className="text-center">
                 <div className="flex items-center gap-1 text-green-400 text-sm font-semibold">
