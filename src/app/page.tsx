@@ -162,9 +162,10 @@ export default function HomePage() {
                 default: { colors: { brand: '#9333ea', brandAccent: '#a855f7' } }
               }
             }}
-            providers={[]}  // No Google for now
+            providers={[]}
             theme="dark"
-            magicLink={true}
+            view="sign_up"  // Shows password fields
+            magicLink={false}  // Disables magic link
           />
         </div>
       </div>
@@ -289,3 +290,4 @@ export default function HomePage() {
     </div>
   )
 }
+
