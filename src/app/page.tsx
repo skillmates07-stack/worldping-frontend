@@ -287,7 +287,11 @@ export default function HomePage() {
 
       {/* Unified Chat (Global + Clans) */}
       <UnifiedChatPanel />
+
+      console.log('Runtime check (browser):', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
     </div>
   )
 }
+
 
