@@ -27,16 +27,13 @@ export async function generateUniqueUsername(supabase: SupabaseClient): Promise<
 
   while (!isUnique) {
     username = generateRandomUsername()
-    
-    // FIXED: query the 'username' column, NOT 'display_name'
+    // Query 'username' column ONLY
     const { data } = await supabase
       .from('user_profiles')
       .select('username')
       .eq('username', username)
       .maybeSingle()
-    
-    isUnique = !data // If no row found, username is unique
+    isUnique = !data
   }
-
   return username
 }
