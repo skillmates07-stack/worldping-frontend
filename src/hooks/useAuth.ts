@@ -21,7 +21,7 @@ export function useAuth() {
     }
 
     async function ensureProfile(userId: string) {
-      // Use maybeSingle to avoid error if profile doesn't exist
+      // Only use 'username'!
       let { data: existingProfile } = await supabase
         .from('user_profiles')
         .select('*')
@@ -29,14 +29,13 @@ export function useAuth() {
         .maybeSingle()
 
       if (!existingProfile) {
-        // Create new profile with unique username
         const username = await generateUniqueUsername(supabase)
 
         const { data: newProfile } = await supabase
           .from('user_profiles')
           .insert({
             user_id: userId,
-            username: username     // THE FIX: must match your DB column name!
+            username: username   // <-- Use only 'username'
           })
           .select()
           .single()
